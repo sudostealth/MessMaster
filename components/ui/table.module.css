@@ -1,0 +1,43 @@
+.table {
+  width: 100%;
+  caption-side: bottom;
+  font-size: 0.875rem;
+}
+
+.thead {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.tr {
+  border-bottom: 1px solid hsl(var(--border));
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 150ms;
+}
+
+.tr:hover {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+.tr:last-child {
+  border: 0;
+}
+
+.th {
+  height: 3rem; /* h-12 */
+  padding: 0 1rem; /* px-4 */
+  text-align: left;
+  vertical-align: middle;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+}
+
+.td {
+  padding: 1rem; /* p-4 */
+  vertical-align: middle;
+}
+
+.caption {
+  margin-top: 1rem; /* mt-4 */
+  font-size: 0.875rem; /* text-sm */
+  color: hsl(var(--muted-foreground));
+}

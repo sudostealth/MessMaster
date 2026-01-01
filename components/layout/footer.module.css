@@ -1,0 +1,43 @@
+.footer {
+  border-top: 1px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+  padding: 2rem 0;
+  margin-top: auto;
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .inner {
+    flex-direction: row;
+  }
+}
+
+.text {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.link {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.link:hover {
+  color: hsl(var(--foreground));
+}
