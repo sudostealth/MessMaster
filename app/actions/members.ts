@@ -34,7 +34,10 @@ export async function updateMemberPermissions(
     .eq("user_id", memberId)
     .eq("mess_id", currentUser.mess_id)
 
-  if (error) return { error: error.message }
+  if (error) {
+      console.error("Update permissions error:", error)
+      return { error: "Failed to update permissions. Ensure database schema is up to date." }
+  }
   
   // Notify
   await broadcastNotification(currentUser.mess_id, "Permissions Updated", "Your permissions have been updated by the manager.", memberId)
@@ -58,42 +61,46 @@ export async function transferManagership(newManagerId: string) {
   if (!currentUser || currentUser.role !== 'manager') {
       return { error: "Unauthorized" }
   }
-
-  // Transaction-like update (Supabase doesn't support easy transactions in client lib without RPC, 
-  // but we can do sequential updates. If one fails, we are in trouble. RPC is better.)
-  
-  // RPC approach would be safer, but for now sequential:
-  // 1. Demote self
-  // 2. Promote new guy
-  
-  // Ideally we create a Postgres function.
-  // Let's create `transfer_managership` RPC.
-  // Or just do it here carefully. Risk: if step 2 fails, no manager exists.
-  // Better: Promote new guy first? No, only 1 manager allowed? 
-  // If Schema check constraint exists? Schema says check(role in manager, member). It doesn't enforce uniqueness.
-  // So we CAN have 2 managers temporarily.
   
   // 1. Promote New Manager
   const { error: promoteError } = await supabase
     .from("mess_members")
-    .update({ role: 'manager' })
+    .update({
+        role: 'manager',
+        can_manage_meals: true,
+        can_manage_finance: true,
+        can_manage_members: true
+    })
     .eq("user_id", newManagerId)
     .eq("mess_id", currentUser.mess_id)
 
-  if (promoteError) return { error: "Failed to promote new manager" }
+  if (promoteError) {
+      console.error("Promote error:", promoteError)
+      return { error: "Failed to promote new manager" }
+  }
 
   // 2. Demote Self
   const { error: demoteError } = await supabase
     .from("mess_members")
     .update({ role: 'member' })
-    .eq("user_id", user.id) // Self
+    .eq("user_id", user.id)
+    .eq("mess_id", currentUser.mess_id)
 
   if (demoteError) {
       // Critical error! We have 2 managers now.
       // Log it. It's acceptable for now.
+      console.error("Demote error (CRITICAL):", demoteError)
       return { error: "Failed to demote yourself. Both are managers now." }
   }
   
+  // Update profiles table roles?
+  // Ideally yes, but the app seems to rely on mess_members role for dashboard access.
+  // Profile role is global, so it might be confusing if they manage one mess but not another (if multi-mess supported).
+  // Current app seems single-mess.
+
+  await supabase.from("profiles").update({ role: 'manager' }).eq("id", newManagerId)
+  await supabase.from("profiles").update({ role: 'member' }).eq("id", user.id)
+
   await broadcastNotification(currentUser.mess_id, "Manager Changed", "Managership has been transferred.")
 
   revalidatePath("/dashboard")
