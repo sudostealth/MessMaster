@@ -75,14 +75,14 @@ export default function LoginPage() {
             <div className="space-y-2">
               <Label htmlFor="email" className="text-foreground/80">{t("email")}</Label>
               <div className="relative group">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
+                <Mail className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
                 <Input
                   id="email"
                   name="email"
                   type="email"
                   placeholder="name@example.com"
                   required
-                  className="pl-12 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
+                  className="!pl-12 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
                 />
               </div>
             </div>
@@ -91,21 +91,21 @@ export default function LoginPage() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="password" className="text-foreground/80">{t("password")}</Label>
                 <Link
-                  href="#"
+                  href="/forgot-password"
                   className="text-xs font-medium text-primary hover:text-primary/80 hover:underline"
                 >
                   {t("forgot_password")}
                 </Link>
               </div>
               <div className="relative group">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
+                <Lock className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
                 <Input
                   id="password"
                   name="password"
                   type="password"
                   placeholder="••••••••"
                   required
-                  className="pl-12 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
+                  className="!pl-12 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
                 />
               </div>
             </div>

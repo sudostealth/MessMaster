@@ -31,7 +31,7 @@ interface ReportData {
         }[]
     }[];
     tables: {
-        mealExpenses: { date: string, shopperName: string, amount: number }[];
+        mealExpenses: { date: string, shopperName: string, amount: number, details?: string }[];
         deposits: { date: string, memberName: string, amount: number }[];
         otherExpenses: { date: string, category: string, shopperName: string, amount: number }[];
     }
@@ -183,9 +183,10 @@ export const generateMonthReportPDF = (data: ReportData) => {
     if (data.tables.mealExpenses.length > 0) {
         autoTable(doc, {
             startY: yPos,
-            head: [['Date', 'Shopper Name', 'Amount']],
+            head: [['Date', 'Items', 'Shopper Name', 'Amount']],
             body: data.tables.mealExpenses.map(e => [
                 new Date(e.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+                e.details || '-',
                 e.shopperName,
                 e.amount.toFixed(2)
             ]),

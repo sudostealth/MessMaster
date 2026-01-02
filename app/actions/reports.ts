@@ -43,7 +43,7 @@ export async function getDetailedMonthReport() {
         .eq("month_id", activeMonth.id)
         .order("date", { ascending: false }),
     supabase.from("expenses")
-        .select("amount, category, date, shopper_id")
+        .select("amount, category, date, shopper_id, details")
         .eq("month_id", activeMonth.id)
         .order("date", { ascending: false }),
     supabase.from("deposits")
@@ -147,7 +147,8 @@ export async function getDetailedMonthReport() {
   const mealExpenses = expenses?.filter((e: any) => e.category === 'meal').map((e: any) => ({
       date: e.date,
       shopperName: getName(e.shopper_id),
-      amount: e.amount
+      amount: e.amount,
+      details: e.details
   })) || []
 
   // C. Deposits
