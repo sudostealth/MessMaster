@@ -8,6 +8,7 @@ import { Check, Edit2, Trash2, X } from "lucide-react"
 import { addMeal, deleteMeal } from "@/app/actions/meal"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { useLanguage } from "@/contexts/language-context"
 
 interface MealRowProps {
     member: any
@@ -17,6 +18,7 @@ interface MealRowProps {
 }
 
 export function MealRow({ member, meal, date, isManager }: MealRowProps) {
+    const { t } = useLanguage()
     const [isEditing, setIsEditing] = useState(false)
     const [loading, setLoading] = useState(false)
 
@@ -94,7 +96,7 @@ export function MealRow({ member, meal, date, isManager }: MealRowProps) {
                     </div>
                     {meal?.added_by_profile && (
                         <div className="text-[10px] text-muted-foreground">
-                            Added by {meal.added_by_profile.name}
+                            {t("added_by")} {meal.added_by_profile.name}
                         </div>
                     )}
                 </div>
