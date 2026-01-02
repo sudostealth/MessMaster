@@ -13,6 +13,21 @@ export async function createMess(formData: FormData) {
 
   if (!userId) return { error: "Not authenticated" }
 
+  // Check if name looks like a mess code (6 chars, uppercase alphanumeric)
+  const messCodePattern = /^[A-Z0-9]{6}$/
+  if (messCodePattern.test(name.toUpperCase())) {
+     // It looks like a code. Check if it IS a code.
+     const { data: existingMess } = await supabase
+        .from("messes")
+        .select("id")
+        .eq("code", name.toUpperCase())
+        .maybeSingle()
+
+     if (existingMess) {
+         return { error: "The name you entered looks like a Mess Code. Did you mean to 'Join a Mess' instead?" }
+     }
+  }
+
   // 1. Create Mess
   const code = Math.random().toString(36).substring(2, 8).toUpperCase()
   
@@ -36,6 +51,9 @@ export async function createMess(formData: FormData) {
       user_id: userId,
       role: "manager",
       status: "active",
+      can_manage_meals: true,
+      can_manage_finance: true,
+      can_manage_members: true
     })
 
   if (memberError) return { error: memberError.message }
@@ -123,6 +141,34 @@ export async function deleteMess(messId: string) {
       }
   }
 
+  // Manual cleanup of dependent records (in case Cascade is not applied in DB)
+  // 1. Get all Month IDs for this mess
+  const { data: months } = await supabase.from("months").select("id").eq("mess_id", messId)
+  const monthIds = months?.map(m => m.id) || []
+
+  if (monthIds.length > 0) {
+      // 2. Delete data linked to months
+      // Expenses
+      const { data: expenses } = await supabase.from("expenses").select("id").in("month_id", monthIds)
+      const expenseIds = expenses?.map(e => e.id) || []
+      if(expenseIds.length > 0) {
+          await supabase.from("expense_allocations").delete().in("expense_id", expenseIds)
+      }
+      await supabase.from("expenses").delete().in("month_id", monthIds)
+
+      // Deposits & Meals
+      await supabase.from("deposits").delete().in("month_id", monthIds)
+      await supabase.from("meals").delete().in("month_id", monthIds)
+
+      // Delete Months
+      await supabase.from("months").delete().in("id", monthIds)
+  }
+
+  // 3. Delete Notices & Members
+  await supabase.from("notices").delete().eq("mess_id", messId)
+  await supabase.from("mess_members").delete().eq("mess_id", messId)
+
+  // 4. Finally Delete Mess
   const { error } = await supabase
     .from("messes")
     .delete()
@@ -134,7 +180,6 @@ export async function deleteMess(messId: string) {
   revalidatePath("/")
   return { success: true }
 }
-// ... (existing deleteMess above)
 
 export async function approveMember(userId: string, messId: string) {
   const supabase = await createClient()
@@ -189,7 +234,6 @@ export async function rejectMember(userId: string, messId: string) {
   revalidatePath("/dashboard/members")
   return { success: true }
 }
-// ... existing imports ...
 
 export async function leaveMess() {
   const supabase = await createClient()
@@ -253,15 +297,16 @@ export async function addMemberByEmail(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "Not authenticated" }
 
-  const email = formData.get("email") as string
+  let email = formData.get("email") as string
   if (!email) return { error: "Email is required" }
+  email = email.trim()
 
   // 1. Verify Manager
   const { data: manager } = await supabase.from("mess_members").select("mess_id, role").eq("user_id", user.id).single()
   if (manager?.role !== 'manager') return { error: "Unauthorized" }
 
   // 2. Find User by Email (in profiles)
-  const { data: profile } = await supabase.from("profiles").select("id").eq("email", email).single()
+  const { data: profile } = await supabase.from("profiles").select("id").ilike("email", email).maybeSingle()
   
   if (!profile) return { error: "User not found with this email. They must sign up first." }
 

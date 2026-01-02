@@ -26,10 +26,13 @@ create table messes (
 -- MESS MEMBERS
 create table mess_members (
   id uuid default uuid_generate_v4() primary key,
-  mess_id uuid references messes(id) not null,
+  mess_id uuid references messes(id) on delete cascade not null,
   user_id uuid references profiles(id) not null,
   role text default 'member' check (role in ('manager', 'member')),
   status text default 'pending' check (status in ('active', 'pending', 'rejected')),
+  can_manage_meals boolean default false,
+  can_manage_finance boolean default false,
+  can_manage_members boolean default false,
   joined_at timestamp with time zone default timezone('utc'::text, now()) not null,
   unique(mess_id, user_id)
 );
@@ -37,7 +40,7 @@ create table mess_members (
 -- MONTHS (Accounting Periods)
 create table months (
   id uuid default uuid_generate_v4() primary key,
-  mess_id uuid references messes(id) not null,
+  mess_id uuid references messes(id) on delete cascade not null,
   name text not null, -- "January 2024"
   start_date date not null,
   end_date date,
@@ -48,7 +51,7 @@ create table months (
 -- MEALS
 create table meals (
   id uuid default uuid_generate_v4() primary key,
-  month_id uuid references months(id) not null,
+  month_id uuid references months(id) on delete cascade not null,
   user_id uuid references profiles(id) not null,
   date date not null,
   breakfast numeric default 0,
@@ -60,7 +63,7 @@ create table meals (
 -- DEPOSITS
 create table deposits (
   id uuid default uuid_generate_v4() primary key,
-  month_id uuid references months(id) not null,
+  month_id uuid references months(id) on delete cascade not null,
   user_id uuid references profiles(id) not null, -- Member who deposited
   added_by uuid references profiles(id) not null, -- Manager who recorded it
   amount numeric not null,
@@ -72,7 +75,7 @@ create table deposits (
 -- EXPENSES (Unified table for all costs)
 create table expenses (
   id uuid default uuid_generate_v4() primary key,
-  month_id uuid references months(id) not null,
+  month_id uuid references months(id) on delete cascade not null,
   added_by uuid references profiles(id) not null,
   amount numeric not null,
   date date not null,
@@ -98,7 +101,7 @@ create table expense_allocations (
 -- NOTICES
 create table notices (
   id uuid default uuid_generate_v4() primary key,
-  mess_id uuid references messes(id) not null,
+  mess_id uuid references messes(id) on delete cascade not null,
   title text not null,
   content text not null,
   created_by uuid references profiles(id) not null,
