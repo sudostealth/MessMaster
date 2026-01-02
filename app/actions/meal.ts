@@ -223,8 +223,8 @@ export async function batchUpsertMeals(date: string, meals: { user_id: string, b
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "Not authenticated" }
 
-  const { data: manager } = await supabase.from("mess_members").select("mess_id, role").eq("user_id", user.id).single()
-  if (manager?.role !== 'manager') return { error: "Unauthorized" }
+  const { data: manager } = await supabase.from("mess_members").select("mess_id, role, can_manage_meals").eq("user_id", user.id).single()
+  if (manager?.role !== 'manager' && !manager?.can_manage_meals) return { error: "Unauthorized" }
 
   const { data: activeMonth } = await supabase.from("months").select("id").eq("mess_id", manager.mess_id).eq("is_active", true).single()
   if (!activeMonth) return { error: "No active month" }
