@@ -31,16 +31,21 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex container p-0 max-w-full">
-       <div className="hidden md:block">
+    <div className="flex container p-0 max-w-full h-[calc(100vh-4rem)]">
+       <div className="hidden md:block h-full">
           <Sidebar role={role} permissions={permissions} />
        </div>
-       <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
-         <div className="md:hidden p-2">
+       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+         {/* Mobile Header */}
+         <div className="md:hidden p-3 border-b flex items-center gap-3 bg-background/80 backdrop-blur-md sticky top-0 z-30">
             <MobileNav role={role} permissions={permissions} />
+            <span className="font-semibold text-lg">Dashboard</span>
          </div>
-         <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-           {children}
+
+         <div className="flex-1 p-4 md:p-8 overflow-y-auto scroll-smooth">
+           <div className="mx-auto max-w-6xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+             {children}
+           </div>
          </div>
        </div>
     </div>
