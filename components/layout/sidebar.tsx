@@ -21,7 +21,17 @@ import { signOut } from "@/app/actions/auth"
 import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/contexts/language-context"
 
-export function Sidebar({ role, isMobile = false }: { role: string, isMobile?: boolean }) {
+interface SidebarProps {
+    role: string;
+    permissions?: {
+        can_manage_meals: boolean;
+        can_manage_finance: boolean;
+        can_manage_members: boolean;
+    };
+    isMobile?: boolean;
+}
+
+export function Sidebar({ role, permissions, isMobile = false }: SidebarProps) {
   const { t } = useLanguage()
   const pathname = usePathname()
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -35,12 +45,21 @@ export function Sidebar({ role, isMobile = false }: { role: string, isMobile?: b
     { href: "/dashboard/updates", label: t("updates"), icon: AlertCircle },
   ]
 
-  const managerLinks = [
-    { href: "/dashboard/add-meal", label: t("add_meal"), icon: PlusCircle },
-    { href: "/dashboard/add-cost", label: t("add_cost"), icon: PlusCircle },
-    { href: "/dashboard/add-deposit", label: t("add_deposit"), icon: PlusCircle },
-    { href: "/dashboard/add-member", label: t("add_member"), icon: PlusCircle },
-  ]
+  // Construct management links based on permissions
+  const managementLinks = []
+
+  if (isManager || permissions?.can_manage_meals) {
+      managementLinks.push({ href: "/dashboard/add-meal", label: t("add_meal"), icon: PlusCircle })
+  }
+
+  if (isManager || permissions?.can_manage_finance) {
+      managementLinks.push({ href: "/dashboard/add-cost", label: t("add_cost"), icon: PlusCircle })
+      managementLinks.push({ href: "/dashboard/add-deposit", label: t("add_deposit"), icon: PlusCircle })
+  }
+
+  if (isManager || permissions?.can_manage_members) {
+      managementLinks.push({ href: "/dashboard/add-member", label: t("add_member"), icon: PlusCircle })
+  }
 
   const toggleSidebar = () => setIsCollapsed(!isCollapsed)
 
@@ -113,12 +132,12 @@ export function Sidebar({ role, isMobile = false }: { role: string, isMobile?: b
           <NavItem key={link.href} {...link} />
         ))}
 
-        {isManager && (
+        {managementLinks.length > 0 && (
           <>
             <div className={cn("text-xs font-semibold text-muted-foreground mt-4 mb-1 uppercase tracking-wider px-3", isCollapsed && "text-center")}>
               {isCollapsed ? "Mng" : t("management")}
             </div>
-            {managerLinks.map((link) => (
+            {managementLinks.map((link) => (
               <NavItem key={link.href} {...link} />
             ))}
           </>
