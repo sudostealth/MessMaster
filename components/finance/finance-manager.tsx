@@ -92,20 +92,49 @@ export function FinanceManager({ expenses, deposits, currentUserId, isManager }:
            </Card>
        </div>
 
-       <Tabs defaultValue="expenses" className="w-full">
-           <TabsList className="grid w-full grid-cols-2">
-               <TabsTrigger value="expenses">{t("expenses")}</TabsTrigger>
+       <Tabs defaultValue="meal_cost" className="w-full">
+           <TabsList className="grid w-full grid-cols-3">
+               <TabsTrigger value="meal_cost">{t("meal_cost")}</TabsTrigger>
+               <TabsTrigger value="other_cost">{t("other_cost")}</TabsTrigger>
                <TabsTrigger value="deposits">{t("deposits")}</TabsTrigger>
            </TabsList>
 
-           <TabsContent value="expenses" className="space-y-4 mt-4">
-               {expenses.length === 0 ? (
+           <TabsContent value="meal_cost" className="space-y-4 mt-4">
+               {expenses.filter(e => e.category === 'meal').length === 0 ? (
                    <div className="text-center py-10 text-muted-foreground border border-dashed rounded-lg">{t("no_records")}</div>
                ) : (
-                   expenses.map((expense) => (
+                   expenses.filter(e => e.category === 'meal').map((expense) => (
                        <div key={expense.id} className="flex items-center justify-between p-4 rounded-lg bg-card border glass hover:bg-muted/50 transition-colors">
                            <div className="flex items-center gap-4">
-                               <div className={`p-2 rounded-full ${expense.category === 'meal' ? 'bg-orange-500/10 text-orange-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                               <div className="p-2 rounded-full bg-orange-500/10 text-orange-500">
+                                   <TrendingDown className="h-4 w-4" />
+                               </div>
+                               <div>
+                                   <p className="font-medium text-sm">{expense.details || expense.category}</p>
+                                   <p className="text-xs text-muted-foreground">
+                                       {format(new Date(expense.date), "MMM d, yyyy")} • By {expense.profiles?.name || "Unknown"}
+                                   </p>
+                               </div>
+                           </div>
+                           <div className="flex items-center gap-4">
+                               <div className="font-bold text-red-500">
+                                   -{Number(expense.amount).toFixed(2)}
+                               </div>
+                               <ActionMenu id={expense.id} type="expense" onDelete={handleDeleteExpense} />
+                           </div>
+                       </div>
+                   ))
+               )}
+           </TabsContent>
+
+           <TabsContent value="other_cost" className="space-y-4 mt-4">
+               {expenses.filter(e => e.category !== 'meal').length === 0 ? (
+                   <div className="text-center py-10 text-muted-foreground border border-dashed rounded-lg">{t("no_records")}</div>
+               ) : (
+                   expenses.filter(e => e.category !== 'meal').map((expense) => (
+                       <div key={expense.id} className="flex items-center justify-between p-4 rounded-lg bg-card border glass hover:bg-muted/50 transition-colors">
+                           <div className="flex items-center gap-4">
+                               <div className="p-2 rounded-full bg-blue-500/10 text-blue-500">
                                    <TrendingDown className="h-4 w-4" />
                                </div>
                                <div>

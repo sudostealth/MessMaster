@@ -8,7 +8,7 @@ export default async function MealDetailsPage() {
   // 1. Get Mess ID and Month
   const { data: member } = await supabase
     .from("mess_members")
-    .select("mess_id, role")
+    .select("mess_id, role, can_manage_meals")
     .eq("user_id", user?.id)
     .maybeSingle()
   
@@ -41,7 +41,7 @@ export default async function MealDetailsPage() {
           meals={meals || []} 
           month={activeMonth} 
           currentUserId={user?.id || ""}
-          isManager={member.role === 'manager'}
+          isManager={member.role === 'manager' || member.can_manage_meals}
        />
     </div>
   )
