@@ -7,9 +7,11 @@ import { JoinMessForm } from "@/components/onboarding/join-mess-form"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 import { useLanguage } from "@/contexts/language-context"
 import { Badge } from "@/components/ui/badge"
-import { Download } from "lucide-react"
-import jsPDF from "jspdf"
-import autoTable from "jspdf-autotable"
+import { Download, Loader2 } from "lucide-react"
+import { getDetailedMonthReport } from "@/app/actions/reports"
+import { generateMonthReportPDF } from "@/lib/pdf-generator"
+import { toast } from "sonner"
+import { useState } from "react"
 
 interface DashboardContentProps {
     user: any;
@@ -20,6 +22,7 @@ interface DashboardContentProps {
 
 export function DashboardContent({ user, membership, stats, message }: DashboardContentProps) {
     const { t } = useLanguage()
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
     if (membership) {
         if (membership.status === 'pending') {
@@ -39,64 +42,24 @@ export function DashboardContent({ user, membership, stats, message }: Dashboard
         if (currentHour < 12) greeting = "Good Morning"
         else if (currentHour < 18) greeting = "Good Afternoon"
 
-        const handleDownloadPDF = () => {
-             const doc = new jsPDF()
+        const handleDownloadPDF = async () => {
+             setIsGeneratingPdf(true)
+             try {
+                const res = await getDetailedMonthReport()
+                if ('error' in res) {
+                    toast.error(res.error)
+                    return
+                }
 
-             // Header
-             doc.setFontSize(22)
-             doc.text(membership.messes?.name || "Mess Report", 14, 20)
-
-             doc.setFontSize(14)
-             doc.text(`Month: ${stats.monthName}`, 14, 28)
-             doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 34)
-
-             let yPos = 40
-
-             // Table 1: Daily Breakdown
-             if (stats.dailyStats && stats.dailyStats.length > 0) {
-                 doc.setFontSize(16)
-                 doc.text("Daily Breakdown", 14, yPos)
-                 yPos += 5
-
-                 autoTable(doc, {
-                    startY: yPos,
-                    head: [['Date', 'Meals', 'Expenses', 'Deposits']],
-                    body: stats.dailyStats.map((d: any) => [
-                        new Date(d.date).toLocaleDateString(),
-                        d.meals,
-                        d.expense.toFixed(2),
-                        d.deposit.toFixed(2)
-                    ]),
-                 })
-
-                 // @ts-expect-error
-                 yPos = doc.lastAutoTable.finalY + 15
+                // @ts-expect-error
+                generateMonthReportPDF(res)
+                toast.success("Report generated successfully")
+             } catch (error) {
+                console.error(error)
+                toast.error("Failed to generate report")
+             } finally {
+                setIsGeneratingPdf(false)
              }
-
-             // Table 2: Member Summary
-             if (stats.memberSummaries && stats.memberSummaries.length > 0) {
-                 doc.setFontSize(16)
-                 doc.text("Member Summary", 14, yPos)
-                 yPos += 5
-
-                 autoTable(doc, {
-                    startY: yPos,
-                    head: [['Name', 'Meals', 'Meal Cost', 'Shared', 'Indiv.', 'Total Cost', 'Deposit', 'Balance']],
-                    body: stats.memberSummaries.map((m: any) => [
-                        m.name,
-                        m.totalMeals,
-                        m.mealCost.toFixed(2),
-                        m.sharedCost.toFixed(2),
-                        m.individualCost.toFixed(2),
-                        m.totalCost.toFixed(2),
-                        m.totalDeposit.toFixed(2),
-                        m.balance.toFixed(2)
-                    ]),
-                    styles: { fontSize: 8 }
-                 })
-             }
-
-             doc.save(`${membership.messes?.name}_${stats.monthName}_Report.pdf`)
         }
 
         const isManager = membership.role === 'manager' || membership.can_manage_finance
@@ -121,9 +84,15 @@ export function DashboardContent({ user, membership, stats, message }: Dashboard
                     </p>
 
                     {stats && isManager && (
-                        <Button onClick={handleDownloadPDF} variant="outline" size="sm" className="gap-2">
-                           <Download className="w-4 h-4"/>
-                           Download Report
+                        <Button
+                          onClick={handleDownloadPDF}
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          disabled={isGeneratingPdf}
+                        >
+                           {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin"/> : <Download className="w-4 h-4"/>}
+                           {isGeneratingPdf ? "Generating..." : "Download Report"}
                         </Button>
                     )}
                 </div>
