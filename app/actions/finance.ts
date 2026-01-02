@@ -85,6 +85,18 @@ export async function addCost(formData: FormData) {
   const { data: activeMonth } = await supabase.from("months").select("id").eq("mess_id", member.mess_id).eq("is_active", true).single()
   if (!activeMonth) return { error: "No active month" }
 
+  // Check Balance
+  const { data: deposits } = await supabase.from("deposits").select("amount").eq("month_id", activeMonth.id)
+  const { data: expenses } = await supabase.from("expenses").select("amount").eq("month_id", activeMonth.id)
+
+  const totalDeposits = deposits?.reduce((sum, d) => sum + Number(d.amount), 0) || 0
+  const totalExpenses = expenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0
+
+  // Rule: Cost <= Mess Balance
+  if ((totalDeposits - totalExpenses) < amount) {
+    return { error: `Insufficient Mess Balance. Current Balance: ৳${(totalDeposits - totalExpenses).toFixed(2)}` }
+  }
+
   // Shopper ID is required for all
   const shopperIds = formData.getAll("shopperIds") as string[]
   const singleShopperId = formData.get("shopperId") as string // fallback for shared/individual tabs that might still use single select

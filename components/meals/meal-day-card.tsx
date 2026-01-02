@@ -21,11 +21,10 @@ export function MealDayCard({ date, members, meals, isManager, currentUserId }: 
     const dailyTotal = meals.reduce((acc, curr) => acc + (Number(curr.breakfast) + Number(curr.lunch) + Number(curr.dinner)), 0)
 
     // Filter members based on role
-    // If manager -> Show ALL members (even if no meal, we want to allow editing)
-    // If user -> Show ONLY themselves
-    const visibleMembers = isManager
-        ? members
-        : members.filter(m => m.user_id === currentUserId)
+    // User Requirement: "Every member can see the meal deatils of every members in the mess in meals page as manger see the meals details"
+    // So we show ALL members to everyone.
+    // The `isManager` prop passed down controls whether the inputs are editable.
+    const visibleMembers = members
 
     if (visibleMembers.length === 0) return null
 
