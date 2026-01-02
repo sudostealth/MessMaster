@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useLanguage } from "@/contexts/language-context"
-import { User, Mail, Lock, Phone, ArrowRight, Loader2 } from "lucide-react"
+import { User, Mail, Lock, Phone, ArrowRight, Loader2, MailCheck } from "lucide-react"
 import { motion } from "framer-motion"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 
 export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showVerifyModal, setShowVerifyModal] = useState(false)
   const router = useRouter()
   const supabase = createClient()
   const { t } = useLanguage()
@@ -51,10 +53,11 @@ export default function SignupPage() {
       if (signUpError) throw signUpError
 
       if (data.session) {
+        // Auto sign-in scenario (if enabled)
         router.push("/dashboard")
       } else {
-        // Handle email confirmation case if needed
-        setError("Please check your email to confirm your account")
+        // Email confirmation required scenario
+        setShowVerifyModal(true)
       }
     } catch (err: any) {
       setError(err.message)
@@ -66,8 +69,8 @@ export default function SignupPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
       {/* Background Decor */}
-      <div className="absolute inset-0 z-0">
-         <div className="absolute -bottom-[20%] -right-[10%] h-[80vh] w-[80vh] rounded-full bg-primary/20 blur-[130px]" />
+      <div className="absolute inset-0 z-0 pointer-events-none">
+         <div className="absolute -bottom-[20%] -right-[10%] h-[80vh] w-[80vh] rounded-full bg-primary/10 blur-[130px]" />
          <div className="absolute top-[20%] -left-[10%] h-[50vh] w-[50vh] rounded-full bg-blue-500/10 blur-[100px]" />
       </div>
 
@@ -77,7 +80,7 @@ export default function SignupPage() {
         transition={{ duration: 0.5 }}
         className="z-10 w-full max-w-md"
       >
-        <div className="glass overflow-hidden rounded-3xl p-8 shadow-2xl backdrop-blur-xl border border-white/20 dark:border-white/10">
+        <div className="glass-card overflow-hidden rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold tracking-tight text-foreground">{t("create_account")}</h1>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -96,7 +99,7 @@ export default function SignupPage() {
                       name="name"
                       placeholder="John Doe"
                       required
-                      className="pl-10 h-11 bg-background/50 border-input/50 focus:bg-background transition-all duration-300"
+                      className="pl-10 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
                     />
                   </div>
                 </div>
@@ -109,7 +112,7 @@ export default function SignupPage() {
                       name="phone"
                       placeholder="+8801..."
                       required
-                      className="pl-10 h-11 bg-background/50 border-input/50 focus:bg-background transition-all duration-300"
+                      className="pl-10 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
                     />
                   </div>
                 </div>
@@ -125,7 +128,7 @@ export default function SignupPage() {
                   type="email"
                   placeholder="name@example.com"
                   required
-                  className="pl-10 h-11 bg-background/50 border-input/50 focus:bg-background transition-all duration-300"
+                  className="pl-10 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
                 />
               </div>
             </div>
@@ -140,7 +143,7 @@ export default function SignupPage() {
                   type="password"
                   placeholder="Create a password"
                   required
-                  className="pl-10 h-11 bg-background/50 border-input/50 focus:bg-background transition-all duration-300"
+                  className="pl-10 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
                 />
               </div>
             </div>
@@ -155,7 +158,7 @@ export default function SignupPage() {
                   type="password"
                   placeholder="Repeat password"
                   required
-                  className="pl-10 h-11 bg-background/50 border-input/50 focus:bg-background transition-all duration-300"
+                  className="pl-10 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
                 />
               </div>
             </div>
@@ -172,7 +175,7 @@ export default function SignupPage() {
 
             <Button 
               type="submit" 
-              className="w-full h-11 text-base font-medium shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all duration-300 mt-2" 
+              className="w-full h-11 text-base font-medium shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all duration-300 mt-2"
               disabled={loading}
             >
               {loading ? (
@@ -196,6 +199,37 @@ export default function SignupPage() {
           </div>
         </div>
       </motion.div>
+
+      {/* Email Verification Modal */}
+      <Dialog open={showVerifyModal} onOpenChange={setShowVerifyModal}>
+         <DialogContent className="glass-card sm:max-w-md border-0 ring-0 outline-none p-0 overflow-hidden">
+            <div className="p-8 flex flex-col items-center justify-center text-center space-y-6 bg-gradient-to-b from-primary/5 to-transparent">
+               <motion.div
+                 initial={{ scale: 0, rotate: -20 }}
+                 animate={{ scale: 1, rotate: 0 }}
+                 transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                 className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary"
+               >
+                  <MailCheck className="w-10 h-10" />
+               </motion.div>
+
+               <div className="space-y-2">
+                 <DialogTitle className="text-2xl font-bold">Check your email</DialogTitle>
+                 <DialogDescription className="text-base text-muted-foreground max-w-xs mx-auto">
+                    We've sent a confirmation link to your email address. Please verify to continue.
+                 </DialogDescription>
+               </div>
+
+               <Button
+                 className="w-full max-w-[200px]"
+                 variant="outline"
+                 onClick={() => router.push("/login")}
+               >
+                 Go to Login
+               </Button>
+            </div>
+         </DialogContent>
+      </Dialog>
     </div>
   )
 }
