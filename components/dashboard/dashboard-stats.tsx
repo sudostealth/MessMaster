@@ -140,9 +140,9 @@ export function DashboardStats({ data }: StatsProps) {
           <div>
             <h2 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
                <span className="h-6 w-1 bg-purple-500 rounded-full" />
-               All Member Summary
+               All Member Summary ({data.memberSummaries.length})
             </h2>
-            <div className="grid gap-4 grid-cols-1">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {data.memberSummaries.map((summary: any, i: number) => (
                     <MemberSummaryCard key={i} summary={summary} />
                 ))}
