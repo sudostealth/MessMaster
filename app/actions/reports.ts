@@ -42,8 +42,14 @@ export async function getDetailedMonthReport() {
         .select("breakfast, lunch, dinner, user_id, date")
         .eq("month_id", activeMonth.id)
         .order("date", { ascending: false }),
-    supabase.from("expenses").select("amount, category").eq("month_id", activeMonth.id),
-    supabase.from("deposits").select("amount, user_id").eq("month_id", activeMonth.id),
+    supabase.from("expenses")
+        .select("amount, category, date, shopper_id")
+        .eq("month_id", activeMonth.id)
+        .order("date", { ascending: false }),
+    supabase.from("deposits")
+        .select("amount, user_id, date")
+        .eq("month_id", activeMonth.id)
+        .order("date", { ascending: false }),
     supabase.from("mess_members").select("user_id, profiles(name)").eq("mess_id", activeMonth.mess_id).eq("status", "active"),
     supabase.from("expense_allocations")
       .select("amount, user_id, expense:expenses!inner(category)")
@@ -103,21 +109,61 @@ export async function getDetailedMonthReport() {
       }
   })
 
-  // 5. Prepare Detailed Meal Logs
-  // Flatten and format for the table
-  const mealLogs = (meals || []).map((m: any) => {
-       // Find member name from the members list fetched above
-       const member = members?.find((mem: any) => mem.user_id === m.user_id)
-       const profile = Array.isArray(member?.profiles) ? member?.profiles[0] : member?.profiles
+  // 5. Prepare Data for PDF
+  const getName = (userId: string) => {
+      const member = members?.find((m: any) => m.user_id === userId)
+      const profile = Array.isArray(member?.profiles) ? member?.profiles[0] : member?.profiles
+      return profile?.name || "Unknown"
+  }
 
-       return {
-           date: m.date,
-           memberName: profile?.name || "Unknown",
-           breakfast: m.breakfast || 0,
-           lunch: m.lunch || 0,
-           dinner: m.dinner || 0
-       }
-  })
+  // A. Group Meals by Member
+  // We want a list of members, and for each member, their meal logs
+  const memberMealLogs = memberSummaries?.map(summary => {
+      // Find user_id from the original members list using name (a bit roundabout but works since we built summary from members)
+      // Better: let's look up the member in 'members' again or pass user_id in summary
+      // To fix this cleanly, let's look at 'members' directly
+      const member = members?.find((m: any) => {
+           const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
+           return p?.name === summary.name
+      })
+
+      if (!member) return null
+
+      const myMeals = meals?.filter((m: any) => m.user_id === member.user_id)
+                           .map((m: any) => ({
+                               date: m.date,
+                               breakfast: m.breakfast || 0,
+                               lunch: m.lunch || 0,
+                               dinner: m.dinner || 0
+                           })) || []
+
+      return {
+          memberName: summary.name,
+          meals: myMeals
+      }
+  }).filter(Boolean)
+
+  // B. Meal Expenses (Category = 'meal')
+  const mealExpenses = expenses?.filter((e: any) => e.category === 'meal').map((e: any) => ({
+      date: e.date,
+      shopperName: getName(e.shopper_id),
+      amount: e.amount
+  })) || []
+
+  // C. Deposits
+  const depositLogs = deposits?.map((d: any) => ({
+      date: d.date,
+      memberName: getName(d.user_id),
+      amount: d.amount
+  })) || []
+
+  // D. Other Expenses (Category != 'meal')
+  const otherExpenses = expenses?.filter((e: any) => e.category !== 'meal').map((e: any) => ({
+      date: e.date,
+      category: e.category,
+      shopperName: getName(e.shopper_id),
+      amount: e.amount
+  })) || []
 
   // @ts-expect-error
   const messName = Array.isArray(activeMonth.messes) ? activeMonth.messes[0]?.name : activeMonth.messes?.name
@@ -136,6 +182,11 @@ export async function getDetailedMonthReport() {
           totalCost: totalMealCost + totalSharedCost + totalIndividualCost
       },
       memberSummaries,
-      mealLogs
+      groupedMeals: memberMealLogs,
+      tables: {
+          mealExpenses,
+          deposits: depositLogs,
+          otherExpenses
+      }
   }
 }
