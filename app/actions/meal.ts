@@ -21,19 +21,28 @@ export async function addMeal(formData: FormData) {
       return { error: "Values cannot be negative" }
   }
 
-  // Get active month
-  const { data: member } = await supabase
+  // Get active month and requester role
+  const { data: requester } = await supabase
     .from("mess_members")
-    .select("mess_id")
+    .select("mess_id, role, can_manage_meals")
     .eq("user_id", user.id)
+    .eq("status", "active")
     .single()
 
-  if (!member) return { error: "No mess found" }
+  if (!requester) return { error: "No active mess membership found" }
+
+  // Permission Check
+  // If target memberId is NOT the requester, requester MUST be manager or have permission
+  if (memberId !== user.id) {
+      if (requester.role !== 'manager' && !requester.can_manage_meals) {
+          return { error: "Unauthorized: You can only manage your own meals" }
+      }
+  }
 
   const { data: activeMonth } = await supabase
     .from("months")
     .select("id")
-    .eq("mess_id", member.mess_id)
+    .eq("mess_id", requester.mess_id)
     .eq("is_active", true)
     .single()
 
@@ -46,7 +55,7 @@ export async function addMeal(formData: FormData) {
     .eq("month_id", activeMonth.id)
     .eq("user_id", memberId)
     .eq("date", date)
-    .single()
+    .maybeSingle() // Use maybeSingle to avoid error if 0 rows
 
   if (existingMeal) {
       // Update
@@ -99,8 +108,6 @@ export async function addBulkMeals(formData: FormData) {
   
   const { data: members } = await supabase.from("mess_members").select("user_id").eq("mess_id", member.mess_id).eq("status", "active")
   
-  const updates = []
-  
   if (members) {
       for (const m of members) {
           const breakfast = parseFloat(formData.get(`meal_${m.user_id}_breakfast`) as string || "0")
@@ -109,7 +116,7 @@ export async function addBulkMeals(formData: FormData) {
           
           if (breakfast > 0 || lunch > 0 || dinner > 0) {
               // Check existing
-              const { data: existing } = await supabase.from("meals").select("id").eq("month_id", activeMonth.id).eq("user_id", m.user_id).eq("date", date).single()
+              const { data: existing } = await supabase.from("meals").select("id").eq("month_id", activeMonth.id).eq("user_id", m.user_id).eq("date", date).maybeSingle()
               
               if (existing) {
                   await supabase.from("meals").update({ breakfast, lunch, dinner }).eq("id", existing.id)
@@ -165,8 +172,8 @@ export async function deleteMeal(mealId: string) {
     if (!user) return { error: "Not authenticated" }
 
     // Check permissions (must be manager)
-    const { data: member } = await supabase.from("mess_members").select("role, mess_id").eq("user_id", user.id).single()
-    if (!member || member.role !== 'manager') return { error: "Unauthorized" }
+    const { data: member } = await supabase.from("mess_members").select("role, mess_id, can_manage_meals").eq("user_id", user.id).single()
+    if (!member || (member.role !== 'manager' && !member.can_manage_meals)) return { error: "Unauthorized" }
 
     const { error } = await supabase.from("meals").delete().eq("id", mealId)
     
@@ -207,15 +214,6 @@ export async function bulkUpsertMeals(date: string, values: { breakfast: number,
 
   if (error) return { error: error.message }
   
-  // Notify Members
-  const notifications = members.map(m => ({
-      user_id: m.user_id,
-      title: "Meal Updated",
-      message: `Manager updated meals for ${date} (B:${values.breakfast}, L:${values.lunch}, D:${values.dinner})`,
-      created_at: new Date().toISOString()
-  }))
-  await supabase.from("notifications").insert(notifications)
-
   revalidatePath("/dashboard/meals")
   return { success: true }
 }
@@ -244,10 +242,6 @@ export async function batchUpsertMeals(date: string, meals: { user_id: string, b
 
   if (error) return { error: error.message }
   
-  // Notification
-  // const notifications = meals.map(m => ({ ... })) // potentially too many notifications
-  // Just notify generally if needed or skip.
-  
   revalidatePath("/dashboard/meals")
   return { success: true }
 }
@@ -270,4 +264,3 @@ export async function getMealsByDate(date: string) {
   
   return data || []
 }
-
