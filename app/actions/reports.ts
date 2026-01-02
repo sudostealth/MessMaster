@@ -39,7 +39,7 @@ export async function getDetailedMonthReport() {
     { data: allocations }
   ] = await Promise.all([
     supabase.from("meals")
-        .select("breakfast, lunch, dinner, user_id, date, mess_members(profiles(name))")
+        .select("breakfast, lunch, dinner, user_id, date")
         .eq("month_id", activeMonth.id)
         .order("date", { ascending: false }),
     supabase.from("expenses").select("amount, category").eq("month_id", activeMonth.id),
@@ -105,10 +105,10 @@ export async function getDetailedMonthReport() {
 
   // 5. Prepare Detailed Meal Logs
   // Flatten and format for the table
-  const mealLogs = meals?.map((m: any) => {
-       const profile = Array.isArray(m.mess_members?.profiles)
-            ? m.mess_members?.profiles[0]
-            : m.mess_members?.profiles
+  const mealLogs = (meals || []).map((m: any) => {
+       // Find member name from the members list fetched above
+       const member = members?.find((mem: any) => mem.user_id === m.user_id)
+       const profile = Array.isArray(member?.profiles) ? member?.profiles[0] : member?.profiles
 
        return {
            date: m.date,
