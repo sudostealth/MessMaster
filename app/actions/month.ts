@@ -108,12 +108,15 @@ export async function deleteMonth(monthId: string) {
   const { error: depositsError } = await supabase.from("deposits").delete().eq("month_id", monthId)
   if (depositsError) return { error: "Failed to delete deposits: " + depositsError.message }
 
-  // 3. Delete Expenses (allocations will cascade if set up, otherwise we might need to delete them too)
+  // 4. Delete Expenses (allocations will cascade if set up, otherwise we might need to delete them too)
   // Checking schema, expense_allocations has ON DELETE CASCADE on expense_id, so this is safe.
   const { error: expensesError } = await supabase.from("expenses").delete().eq("month_id", monthId)
   if (expensesError) return { error: "Failed to delete expenses: " + expensesError.message }
 
-  // 4. Finally Delete Month
+  // 5. Delete Notifications related to this month (if any specific ones exist)
+  await supabase.from("notifications").delete().eq("month_id", monthId)
+
+  // 6. Finally Delete Month
   const { error } = await supabase
     .from("months")
     .delete()

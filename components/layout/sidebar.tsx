@@ -42,7 +42,6 @@ export function Sidebar({ role, permissions, isMobile = false }: SidebarProps) {
     { href: "/dashboard/meals", label: t("meals"), icon: Utensils },
     { href: "/dashboard/finance", label: t("finance"), icon: Wallet },
     { href: "/dashboard/members", label: t("members"), icon: Users },
-    { href: "/dashboard/updates", label: t("updates"), icon: AlertCircle },
   ]
 
   // Construct management links based on permissions

@@ -88,8 +88,15 @@ export function MealRow({ member, meal, date, isManager }: MealRowProps) {
                     <AvatarImage src={member.profiles.avatar_url} />
                     <AvatarFallback>{member.profiles.name[0]}</AvatarFallback>
                 </Avatar>
-                <div className="font-medium text-sm md:text-base truncate">
-                    {member.profiles.name}
+                <div className="flex flex-col">
+                    <div className="font-medium text-sm md:text-base truncate">
+                        {member.profiles.name}
+                    </div>
+                    {meal?.added_by_profile && (
+                        <div className="text-[10px] text-muted-foreground">
+                            Added by {meal.added_by_profile.name}
+                        </div>
+                    )}
                 </div>
             </div>
 
