@@ -61,7 +61,7 @@ export async function addMeal(formData: FormData) {
       // Update
       const { error } = await supabase
         .from("meals")
-        .update({ breakfast, lunch, dinner })
+        .update({ breakfast, lunch, dinner, added_by: user.id })
         .eq("id", existingMeal.id)
       
       if (error) return { error: error.message }
@@ -75,7 +75,8 @@ export async function addMeal(formData: FormData) {
             date,
             breakfast,
             lunch,
-            dinner
+            dinner,
+            added_by: user.id
         })
       
       if (error) return { error: error.message }
@@ -235,7 +236,8 @@ export async function batchUpsertMeals(date: string, meals: { user_id: string, b
       date: date,
       breakfast: m.breakfast,
       lunch: m.lunch,
-      dinner: m.dinner
+      dinner: m.dinner,
+      added_by: user.id
   }))
 
   const { error } = await supabase.from("meals").upsert(upsertData, { onConflict: 'user_id, date, month_id' })

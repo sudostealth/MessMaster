@@ -112,7 +112,12 @@ export function FinanceManager({ expenses, deposits, currentUserId, isManager }:
                                <div>
                                    <p className="font-medium text-sm">{expense.details || expense.category}</p>
                                    <p className="text-xs text-muted-foreground">
-                                       {format(new Date(expense.date), "MMM d, yyyy")} • By {expense.profiles?.name || "Unknown"}
+                                       {format(new Date(expense.date), "MMM d, yyyy")} • Paid by {expense.profiles?.name || "Unknown"}
+                                       {expense.added_by_profile && expense.added_by_profile.name !== expense.profiles?.name && (
+                                            <span className="block text-[10px] opacity-75">
+                                                Added by {expense.added_by_profile.name}
+                                            </span>
+                                       )}
                                    </p>
                                </div>
                            </div>
@@ -140,7 +145,12 @@ export function FinanceManager({ expenses, deposits, currentUserId, isManager }:
                                <div>
                                    <p className="font-medium text-sm">{expense.details || expense.category}</p>
                                    <p className="text-xs text-muted-foreground">
-                                       {format(new Date(expense.date), "MMM d, yyyy")} • By {expense.profiles?.name || "Unknown"}
+                                       {format(new Date(expense.date), "MMM d, yyyy")} • Paid by {expense.profiles?.name || "Unknown"}
+                                       {expense.added_by_profile && expense.added_by_profile.name !== expense.profiles?.name && (
+                                            <span className="block text-[10px] opacity-75">
+                                                Added by {expense.added_by_profile.name}
+                                            </span>
+                                       )}
                                    </p>
                                </div>
                            </div>
@@ -168,7 +178,12 @@ export function FinanceManager({ expenses, deposits, currentUserId, isManager }:
                                <div>
                                    <p className="font-medium text-sm">{deposit.details || "Deposit"}</p>
                                    <p className="text-xs text-muted-foreground">
-                                       {format(new Date(deposit.date), "MMM d, yyyy")} • By {deposit.profiles?.name || "Unknown"}
+                                       {format(new Date(deposit.date), "MMM d, yyyy")} • From {deposit.profiles?.name || "Unknown"}
+                                       {deposit.added_by_profile && deposit.added_by_profile.name !== deposit.profiles?.name && (
+                                            <span className="block text-[10px] opacity-75">
+                                                Added by {deposit.added_by_profile.name}
+                                            </span>
+                                       )}
                                    </p>
                                </div>
                            </div>

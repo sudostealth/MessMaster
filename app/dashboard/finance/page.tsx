@@ -18,14 +18,31 @@ export default async function FinanceDetailsPage() {
   // Fetch Deposits
   const { data: deposits } = await supabase
     .from("deposits")
-    .select("id, date, amount, details, user_id, profiles:user_id(name)")
+    .select(`
+        id,
+        date,
+        amount,
+        details,
+        user_id,
+        profiles:user_id(name),
+        added_by_profile:profiles!deposits_added_by_fkey(name)
+    `)
     .eq("month_id", monthId)
     .order("date", { ascending: false })
 
   // Fetch Expenses
   const { data: expenses } = await supabase
     .from("expenses")
-    .select("id, date, amount, details, category, shopper_id, profiles:shopper_id(name)")
+    .select(`
+        id,
+        date,
+        amount,
+        details,
+        category,
+        shopper_id,
+        profiles:shopper_id(name),
+        added_by_profile:profiles!expenses_added_by_fkey(name)
+    `)
     .eq("month_id", monthId)
     .order("date", { ascending: false })
 

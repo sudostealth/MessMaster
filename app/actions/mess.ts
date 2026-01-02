@@ -210,8 +210,9 @@ export async function deleteMess(messId: string) {
       await supabase.from("months").delete().in("id", monthIds)
   }
 
-  // 3. Delete Notices & Members
+  // 3. Delete Notices, Notifications & Members
   await supabase.from("notices").delete().eq("mess_id", messId)
+  await supabase.from("notifications").delete().eq("mess_id", messId)
   await supabase.from("mess_members").delete().eq("mess_id", messId)
 
   // 4. Finally Delete Mess

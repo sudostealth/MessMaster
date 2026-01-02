@@ -20,6 +20,7 @@ export async function broadcastNotification(messId: string, title: string, messa
         user_id: m.user_id,
         title,
         message,
+        mess_id: messId,
         created_at: new Date().toISOString()
     }))
 

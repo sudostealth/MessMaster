@@ -31,7 +31,15 @@ export default async function MealDetailsPage() {
   // 3. Fetch Meals
   const { data: meals } = await supabase
     .from("meals")
-    .select("id, date, breakfast, lunch, dinner, user_id") // Added 'id' for deletion
+    .select(`
+        id,
+        date,
+        breakfast,
+        lunch,
+        dinner,
+        user_id,
+        added_by_profile:profiles!meals_added_by_fkey(name)
+    `)
     .eq("month_id", activeMonth.id)
 
   return (
