@@ -93,26 +93,26 @@ export default function SignupPage() {
                 <div className="space-y-2">
                   <Label htmlFor="name" className="text-foreground/80">{t("full_name")}</Label>
                   <div className="relative group">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
+                    <User className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
                     <Input
                       id="name"
                       name="name"
                       placeholder="John Doe"
                       required
-                      className="pl-10 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
+                      className="!pl-12 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone" className="text-foreground/80">{t("phone")}</Label>
                   <div className="relative group">
-                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
+                    <Phone className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
                     <Input
                       id="phone"
                       name="phone"
                       placeholder="+8801..."
                       required
-                      className="pl-10 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
+                      className="!pl-12 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
                     />
                   </div>
                 </div>
@@ -121,14 +121,14 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label htmlFor="email" className="text-foreground/80">{t("email")}</Label>
               <div className="relative group">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
+                <Mail className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
                 <Input
                   id="email"
                   name="email"
                   type="email"
                   placeholder="name@example.com"
                   required
-                  className="pl-10 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
+                  className="!pl-12 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
                 />
               </div>
             </div>
@@ -136,14 +136,14 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label htmlFor="password" className="text-foreground/80">{t("password")}</Label>
               <div className="relative group">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
+                <Lock className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
                 <Input
                   id="password"
                   name="password"
                   type="password"
                   placeholder="Create a password"
                   required
-                  className="pl-10 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
+                  className="!pl-12 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
                 />
               </div>
             </div>
@@ -151,14 +151,14 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label htmlFor="confirmPassword" className="text-foreground/80">{t("confirm")} {t("password")}</Label>
               <div className="relative group">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
+                <Lock className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
                 <Input
                   id="confirmPassword"
                   name="confirmPassword"
                   type="password"
                   placeholder="Repeat password"
                   required
-                  className="pl-10 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
+                  className="!pl-12 h-11 bg-background/50 border-input/50 focus:bg-background focus:ring-1 focus:ring-primary/20 transition-all duration-300"
                 />
               </div>
             </div>
