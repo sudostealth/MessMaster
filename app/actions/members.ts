@@ -27,10 +27,17 @@ export async function updateMemberPermissions(
       return { error: "Unauthorized: Only managers can update permissions." }
   }
 
+  // Explicitly construct the update object to ensure safety and clarity
+  const updatePayload = {
+      can_manage_meals: permissions.can_manage_meals,
+      can_manage_finance: permissions.can_manage_finance,
+      can_manage_members: permissions.can_manage_members
+  }
+
   // Update target member
   const { error } = await supabase
     .from("mess_members")
-    .update(permissions)
+    .update(updatePayload)
     .eq("user_id", memberId)
     .eq("mess_id", currentUser.mess_id)
 
@@ -42,6 +49,7 @@ export async function updateMemberPermissions(
   // Notify
   await broadcastNotification(currentUser.mess_id, "Permissions Updated", "Your permissions have been updated by the manager.", memberId)
 
+  revalidatePath("/dashboard")
   revalidatePath("/dashboard/members")
   return { success: true }
 }
@@ -63,6 +71,7 @@ export async function transferManagership(newManagerId: string) {
   }
   
   // 1. Promote New Manager
+  // Give them role='manager' and ALL permissions (as fallback/completeness)
   const { error: promoteError } = await supabase
     .from("mess_members")
     .update({
@@ -80,9 +89,15 @@ export async function transferManagership(newManagerId: string) {
   }
 
   // 2. Demote Self
+  // Reset role to 'member' and remove ALL permissions
   const { error: demoteError } = await supabase
     .from("mess_members")
-    .update({ role: 'member' })
+    .update({
+        role: 'member',
+        can_manage_meals: false,
+        can_manage_finance: false,
+        can_manage_members: false
+    })
     .eq("user_id", user.id)
     .eq("mess_id", currentUser.mess_id)
 
@@ -93,11 +108,8 @@ export async function transferManagership(newManagerId: string) {
       return { error: "Failed to demote yourself. Both are managers now." }
   }
   
-  // Update profiles table roles?
-  // Ideally yes, but the app seems to rely on mess_members role for dashboard access.
-  // Profile role is global, so it might be confusing if they manage one mess but not another (if multi-mess supported).
-  // Current app seems single-mess.
-
+  // Update profiles table roles
+  // This is for global user status, we keep it in sync for good measure
   await supabase.from("profiles").update({ role: 'manager' }).eq("id", newManagerId)
   await supabase.from("profiles").update({ role: 'member' }).eq("id", user.id)
 

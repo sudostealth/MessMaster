@@ -14,7 +14,7 @@ export default async function MembersPage() {
   if (myMembership) {
       const { data } = await supabase
         .from("mess_members")
-        .select("user_id, mess_id, role, status, profiles(name, email, phone, avatar_url)")
+        .select("user_id, mess_id, role, status, can_manage_meals, can_manage_finance, can_manage_members, profiles(name, email, phone, avatar_url)")
         .eq("mess_id", myMembership.mess_id)
         .eq("status", "active")
         .order("role", { ascending: true })

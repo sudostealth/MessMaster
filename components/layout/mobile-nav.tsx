@@ -7,7 +7,16 @@ import { Sidebar } from "@/components/layout/sidebar"
 import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 
-export function MobileNav({ role }: { role: string }) {
+interface MobileNavProps {
+    role: string;
+    permissions?: {
+        can_manage_meals: boolean;
+        can_manage_finance: boolean;
+        can_manage_members: boolean;
+    };
+}
+
+export function MobileNav({ role, permissions }: MobileNavProps) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
@@ -26,7 +35,7 @@ export function MobileNav({ role }: { role: string }) {
       <SheetContent side="left" className="p-0 border-r w-[280px]">
         <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
         <div className="h-full py-0">
-            <Sidebar role={role} isMobile={true} />
+            <Sidebar role={role} permissions={permissions} isMobile={true} />
         </div>
       </SheetContent>
     </Sheet>

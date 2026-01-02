@@ -15,30 +15,29 @@ export default async function DashboardLayout({
     redirect("/login")
   }
 
-  // Fetch role
+  // Fetch role and permissions
   const { data: member } = await supabase
     .from("mess_members")
-    .select("role")
+    .select("role, can_manage_meals, can_manage_finance, can_manage_members")
     .eq("user_id", user.id)
-    .eq("status", "active")
     .eq("status", "active")
     .maybeSingle()
   
-  // If no active membership (e.g., pending or no mess), sidebar might not be relevant or shows limited options
-  // For now, we assume if they are in dashboard layout they might be active or pending.
-  // The page.tsx handles the 'pending' state check efficiently. 
-  // We can pass a default role or null if not found.
-  
   const role = member?.role || "member"
+  const permissions = {
+      can_manage_meals: member?.can_manage_meals || false,
+      can_manage_finance: member?.can_manage_finance || false,
+      can_manage_members: member?.can_manage_members || false,
+  }
 
   return (
     <div className="flex container p-0 max-w-full">
        <div className="hidden md:block">
-          <Sidebar role={role} />
+          <Sidebar role={role} permissions={permissions} />
        </div>
        <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
          <div className="md:hidden p-2">
-            <MobileNav role={role} />
+            <MobileNav role={role} permissions={permissions} />
          </div>
          <div className="flex-1 p-4 md:p-8 overflow-y-auto">
            {children}

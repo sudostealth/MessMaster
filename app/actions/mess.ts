@@ -86,19 +86,49 @@ export async function joinMess(formData: FormData) {
 
   if (messError || !mess) return { error: "Mess not found with this code" }
 
-  // 2. Create Join Request
-  const { error: joinError } = await supabase
+  // 2. Check if user was previously a member (even if removed/rejected)
+  const { data: existingMember } = await supabase
     .from("mess_members")
-    .insert({
-      mess_id: mess.id,
-      user_id: userId,
-      role: "member",
-      status: "pending",
-    })
+    .select("id, status")
+    .eq("mess_id", mess.id)
+    .eq("user_id", userId)
+    .maybeSingle()
 
-  if (joinError) {
-    if (joinError.code === "23505") return { error: "You have already joined this mess" } // Unique constraint violation
-    return { error: joinError.message }
+  if (existingMember) {
+      // If they are active or pending, return error
+      if (existingMember.status === 'active') return { error: "You are already a member of this mess" }
+      if (existingMember.status === 'pending') return { error: "You already have a pending request" }
+
+      // If removed or rejected, we can restart them.
+      // Reset permissions to default false.
+      const { error: updateError } = await supabase
+        .from("mess_members")
+        .update({
+            status: 'pending',
+            role: 'member',
+            can_manage_meals: false,
+            can_manage_finance: false,
+            can_manage_members: false,
+            joined_at: new Date().toISOString()
+        })
+        .eq("id", existingMember.id)
+
+      if (updateError) return { error: updateError.message }
+  } else {
+      // 3. Create New Join Request
+      const { error: joinError } = await supabase
+        .from("mess_members")
+        .insert({
+          mess_id: mess.id,
+          user_id: userId,
+          role: "member",
+          status: "pending",
+          can_manage_meals: false,
+          can_manage_finance: false,
+          can_manage_members: false
+        })
+
+      if (joinError) return { error: joinError.message }
   }
 
   revalidatePath("/dashboard")
@@ -109,36 +139,52 @@ export async function searchMess(codeInput: string) {
   const supabase = await createClient()
   const code = codeInput.toUpperCase()
   
+  // Find mess first
   const { data: mess, error } = await supabase
     .from("messes")
-    .select("id, code, name, created_by, profiles(name)")
+    .select("id, code, name")
     .eq("code", code)
     .single()
 
   if (error || !mess) return { error: "Mess not found" }
   
-  return { mess }
+  // Find current manager name from mess_members
+  // Use maybeSingle to prevent crashing if multiple managers exist (though shouldn't happen)
+  // Or even better, limit(1) to just get ONE manager if multiple exist to keep flow working.
+  const { data: manager } = await supabase
+    .from("mess_members")
+    .select("profiles(name)")
+    .eq("mess_id", mess.id)
+    .eq("role", "manager")
+    .limit(1)
+    .maybeSingle()
+
+  const result = {
+      ...mess,
+      created_by: null,
+      profiles: manager?.profiles || { name: "Unknown Manager" }
+  }
+
+  return { mess: result }
 }
 
 export async function deleteMess(messId: string) {
   const supabase = await createClient()
   
-  // Verify permissions (only created_by or manager can delete)
+  // Verify permissions (only MANAGER can delete)
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "Not authenticated" }
 
-  const { data: mess } = await supabase
-    .from("messes")
-    .select("created_by")
-    .eq("id", messId)
+  // Strict check: Must be a manager in mess_members. Created_by is irrelevant for permission.
+  const { data: member } = await supabase
+    .from("mess_members")
+    .select("role")
+    .eq("mess_id", messId)
+    .eq("user_id", user.id)
     .single()
-    
-  if (!mess || mess.created_by !== user.id) {
-      // Fallback check: is user a manager?
-      const { data: member } = await supabase.from("mess_members").select("role").eq("mess_id", messId).eq("user_id", user.id).single()
-      if (member?.role !== 'manager') {
-          return { error: "Unauthorized" }
-      }
+
+  if (!member || member.role !== 'manager') {
+      return { error: "Unauthorized: Only the current manager can delete the mess." }
   }
 
   // Manual cleanup of dependent records (in case Cascade is not applied in DB)
@@ -176,7 +222,6 @@ export async function deleteMess(messId: string) {
 
   if (error) return { error: error.message }
   
-  // also reset user role? Not strictly necessary as trigger might handle or they just become stateless
   revalidatePath("/")
   return { success: true }
 }
@@ -188,13 +233,14 @@ export async function approveMember(userId: string, messId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "Not authenticated" }
 
-  const { data: manager } = await supabase.from("mess_members")
-    .select("role")
+  // Check if current user has permission to manage members
+  const { data: member } = await supabase.from("mess_members")
+    .select("role, can_manage_members")
     .eq("mess_id", messId)
     .eq("user_id", user.id)
     .single()
     
-  if (manager?.role !== 'manager') return { error: "Unauthorized" }
+  if (!member || (member.role !== 'manager' && !member.can_manage_members)) return { error: "Unauthorized" }
 
   const { error } = await supabase
     .from("mess_members")
@@ -211,17 +257,18 @@ export async function approveMember(userId: string, messId: string) {
 export async function rejectMember(userId: string, messId: string) {
   const supabase = await createClient()
 
-    // Verify Manager Status
+  // Verify Manager Status
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "Not authenticated" }
 
-  const { data: manager } = await supabase.from("mess_members")
-    .select("role")
+  // Check if current user has permission to manage members
+  const { data: member } = await supabase.from("mess_members")
+    .select("role, can_manage_members")
     .eq("mess_id", messId)
     .eq("user_id", user.id)
     .single()
     
-  if (manager?.role !== 'manager') return { error: "Unauthorized" }
+  if (!member || (member.role !== 'manager' && !member.can_manage_members)) return { error: "Unauthorized" }
 
   const { error } = await supabase
     .from("mess_members")
@@ -263,23 +310,22 @@ export async function removeMember(userId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "Not authenticated" }
 
-  // Verify Manager
-  const { data: manager } = await supabase.from("mess_members").select("mess_id, role").eq("user_id", user.id).single()
+  // Verify Permissions
+  const { data: manager } = await supabase.from("mess_members")
+      .select("mess_id, role, can_manage_members")
+      .eq("user_id", user.id)
+      .single()
   
-  if (manager?.role !== 'manager') return { error: "Unauthorized" }
+  if (!manager || (manager.role !== 'manager' && !manager.can_manage_members)) return { error: "Unauthorized" }
 
   // Prevent removing self (use leave instead)
   if (userId === user.id) return { error: "Cannot remove yourself. Use Leave Mess." }
 
-  const { error } = await supabase
-    .from("mess_members")
-    .update({ status: 'removed' }) // Or delete? "Remove member form the mess". Delete is cleaner for now.
-    .eq("user_id", userId)
-    .eq("mess_id", manager.mess_id)
-  
-  // Actually, let's DELETE them so they can rejoin if needed, or set status to banned? 
-  // User said "remove member". Delete is best.
-  
+  // If removing a manager? Only manager can remove another member.
+  // Wait, can a member with 'can_manage_members' remove the Manager? No, that should be blocked.
+  const { data: target } = await supabase.from("mess_members").select("role").eq("user_id", userId).eq("mess_id", manager.mess_id).single()
+  if (target?.role === 'manager') return { error: "Cannot remove the manager." }
+
   const { error: deleteError } = await supabase
      .from("mess_members")
      .delete()
@@ -301,9 +347,13 @@ export async function addMemberByEmail(formData: FormData) {
   if (!email) return { error: "Email is required" }
   email = email.trim()
 
-  // 1. Verify Manager
-  const { data: manager } = await supabase.from("mess_members").select("mess_id, role").eq("user_id", user.id).single()
-  if (manager?.role !== 'manager') return { error: "Unauthorized" }
+  // 1. Verify Permissions
+  const { data: manager } = await supabase.from("mess_members")
+      .select("mess_id, role, can_manage_members")
+      .eq("user_id", user.id)
+      .single()
+
+  if (!manager || (manager.role !== 'manager' && !manager.can_manage_members)) return { error: "Unauthorized" }
 
   // 2. Find User by Email (in profiles)
   const { data: profile } = await supabase.from("profiles").select("id").ilike("email", email).maybeSingle()
@@ -324,11 +374,15 @@ export async function addMemberByEmail(formData: FormData) {
   }
 
   // 4. Add Member (Directly Active)
+  // Ensure default permissions are false for new members added by email
   const { error } = await supabase.from("mess_members").insert({
       mess_id: manager.mess_id,
       user_id: profile.id,
       role: 'member',
-      status: 'active'
+      status: 'active',
+      can_manage_meals: false,
+      can_manage_finance: false,
+      can_manage_members: false
   })
 
   if (error) return { error: error.message }
