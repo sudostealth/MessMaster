@@ -57,13 +57,6 @@ export function DashboardStats({ data }: StatsProps) {
           icon={Scale}
           delay={3}
         />
-        <StatsCard
-          title="Month Status"
-          value={data.monthName}
-          subValue="Active Month"
-          icon={Calendar}
-          delay={4}
-        />
       </div>
 
        {/* Breakdown Stats */}
