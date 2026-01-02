@@ -26,11 +26,6 @@ export async function getDashboardStats() {
   if (!activeMonth) return { data: null, message: "No active month" }
 
   // 2. Fetch Aggregates
-  // Supabase doesn't support complex JOIN/GROUP BY easily in the JS client without views or RPCs.
-  // We'll do multiple queries for now or rely on specific client-side logic if small data.
-  // For production, Create Views in SQL is better. We will do simple queries here.
-
-  // 2. Fetch All Data in Parallel (Optimization)
   const [
     { data: meals },
     { data: expenses },
@@ -38,13 +33,10 @@ export async function getDashboardStats() {
     { data: members },
     { data: allocations }
   ] = await Promise.all([
-    supabase.from("meals").select("breakfast, lunch, dinner, user_id").eq("month_id", activeMonth.id),
-    supabase.from("expenses").select("id, amount, category, shopper_id").eq("month_id", activeMonth.id),
-    supabase.from("deposits").select("amount, user_id").eq("month_id", activeMonth.id),
+    supabase.from("meals").select("breakfast, lunch, dinner, user_id, date").eq("month_id", activeMonth.id),
+    supabase.from("expenses").select("id, amount, category, shopper_id, date").eq("month_id", activeMonth.id),
+    supabase.from("deposits").select("amount, user_id, date").eq("month_id", activeMonth.id),
     supabase.from("mess_members").select("user_id, role, profiles(name, avatar_url)").eq("mess_id", activeMonth.mess_id).eq("status", "active"),
-    // Fetch allocations for expenses in this month. 
-    // We can filter by valid expenses (which we get via monthly constraint).
-    // But direct join is better: select allocations where expense.month_id = activeMonth.id
     supabase.from("expense_allocations")
       .select("amount, user_id, expense:expenses!inner(category)")
       .eq("expense.month_id", activeMonth.id) 
@@ -65,7 +57,39 @@ export async function getDashboardStats() {
   
   const messBalance = totalDeposit - (totalMealCost + totalSharedCost + totalIndividualCost)
 
-  // 4. Calculate Member Summaries
+  // 4. Calculate Daily Stats
+  // We need to group by date. Use a Map to aggregate.
+  const dailyMap = new Map<string, { date: string, meals: number, expense: number, deposit: number }>()
+
+  // Process Meals
+  meals?.forEach((m: any) => {
+    const d = m.date
+    if (!dailyMap.has(d)) dailyMap.set(d, { date: d, meals: 0, expense: 0, deposit: 0 })
+    const entry = dailyMap.get(d)!
+    entry.meals += (m.breakfast || 0) + (m.lunch || 0) + (m.dinner || 0)
+  })
+
+  // Process Expenses
+  expenses?.forEach((e: any) => {
+    const d = e.date
+    if (!dailyMap.has(d)) dailyMap.set(d, { date: d, meals: 0, expense: 0, deposit: 0 })
+    const entry = dailyMap.get(d)!
+    entry.expense += (e.amount || 0)
+  })
+
+  // Process Deposits
+  deposits?.forEach((dp: any) => {
+    const d = dp.date
+    if (!dailyMap.has(d)) dailyMap.set(d, { date: d, meals: 0, expense: 0, deposit: 0 })
+    const entry = dailyMap.get(d)!
+    entry.deposit += (dp.amount || 0)
+  })
+
+  // Convert Map to Array and Sort by Date
+  const dailyStats = Array.from(dailyMap.values()).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+
+  // 5. Calculate Member Summaries
   const memberSummaries = members?.map((m: any) => {
       // Handle profiles array/object quirk (Supabase returns array for 1:1 if not !inner or forced single)
       const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
@@ -131,7 +155,8 @@ export async function getDashboardStats() {
         cost: mySummary?.totalCost || 0,
         balance: mySummary?.balance || 0
       },
-      memberSummaries
+      memberSummaries,
+      dailyStats // Return the daily statistics
     }
   }
 }
