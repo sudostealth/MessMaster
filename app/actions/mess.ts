@@ -131,6 +131,12 @@ export async function joinMess(formData: FormData) {
       if (joinError) return { error: joinError.message }
   }
 
+  // 4. Update Profile Role to 'member'
+  await supabase
+    .from("profiles")
+    .update({ role: "member" })
+    .eq("id", userId)
+
   revalidatePath("/dashboard")
   return { success: true }
 }
@@ -210,12 +216,29 @@ export async function deleteMess(messId: string) {
       await supabase.from("months").delete().in("id", monthIds)
   }
 
-  // 3. Delete Notices, Notifications & Members
+  // 3. Update Roles of ALL members to 'user' BEFORE deleting members
+  // Fetch all members first
+  const { data: allMembers } = await supabase
+    .from("mess_members")
+    .select("user_id")
+    .eq("mess_id", messId)
+
+  const allUserIds = allMembers?.map(m => m.user_id) || []
+
+  // 4. Delete Notices, Notifications & Members
   await supabase.from("notices").delete().eq("mess_id", messId)
   await supabase.from("notifications").delete().eq("mess_id", messId)
   await supabase.from("mess_members").delete().eq("mess_id", messId)
 
-  // 4. Finally Delete Mess
+  // 5. Update profiles for all former members to 'user'
+  if (allUserIds.length > 0) {
+      await supabase
+        .from("profiles")
+        .update({ role: 'user' })
+        .in("id", allUserIds)
+  }
+
+  // 6. Finally Delete Mess
   const { error } = await supabase
     .from("messes")
     .delete()
@@ -251,6 +274,12 @@ export async function approveMember(userId: string, messId: string) {
 
   if (error) return { error: error.message }
   
+  // Update Profile Role to 'member' (in case it wasn't set or was somehow reset)
+  await supabase
+    .from("profiles")
+    .update({ role: 'member' })
+    .eq("id", userId)
+
   revalidatePath("/dashboard/members")
   return { success: true }
 }
@@ -279,6 +308,12 @@ export async function rejectMember(userId: string, messId: string) {
 
   if (error) return { error: error.message }
 
+  // Revert Profile Role to 'user'
+  await supabase
+    .from("profiles")
+    .update({ role: 'user' })
+    .eq("id", userId)
+
   revalidatePath("/dashboard/members")
   return { success: true }
 }
@@ -301,6 +336,12 @@ export async function leaveMess() {
     .eq("mess_id", member.mess_id)
 
   if (error) return { error: error.message }
+
+  // Revert Profile Role to 'user'
+  await supabase
+    .from("profiles")
+    .update({ role: 'user' })
+    .eq("id", user.id)
   
   revalidatePath("/dashboard")
   return { success: true }
@@ -334,6 +375,12 @@ export async function removeMember(userId: string) {
      .eq("mess_id", manager.mess_id)
 
   if (deleteError) return { error: deleteError.message }
+
+  // Revert Profile Role to 'user'
+  await supabase
+    .from("profiles")
+    .update({ role: 'user' })
+    .eq("id", userId)
 
   revalidatePath("/dashboard/members")
   return { success: true }
@@ -387,6 +434,12 @@ export async function addMemberByEmail(formData: FormData) {
   })
 
   if (error) return { error: error.message }
+
+  // Update Profile Role to 'member'
+  await supabase
+    .from("profiles")
+    .update({ role: 'member' })
+    .eq("id", profile.id)
   
   revalidatePath("/dashboard/members")
   return { success: true }
