@@ -83,6 +83,7 @@ CREATE TABLE meals (
   id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
   month_id uuid REFERENCES months(id) ON DELETE CASCADE NOT NULL,
   user_id uuid REFERENCES profiles(id) NOT NULL,
+  added_by uuid REFERENCES profiles(id), -- Tracks who added/edited the meal
   date date NOT NULL,
   breakfast numeric DEFAULT 0,
   lunch numeric DEFAULT 0,
@@ -264,7 +265,8 @@ CREATE POLICY "Managers can delete mess" ON messes FOR DELETE USING (created_by 
 
 -- 4.3 MESS MEMBERS
 CREATE POLICY "View members of own mess" ON mess_members FOR SELECT USING (user_id = auth.uid() OR is_mess_member(mess_id));
-CREATE POLICY "Users can join a mess" ON mess_members FOR INSERT WITH CHECK (auth.uid() = user_id);
+-- Allow managers to add members (for addMemberByEmail) OR users to join themselves
+CREATE POLICY "Users can join or Managers can add members" ON mess_members FOR INSERT WITH CHECK (auth.uid() = user_id OR is_mess_manager(mess_id));
 CREATE POLICY "Managers can update members" ON mess_members FOR UPDATE USING (is_mess_manager(mess_id));
 CREATE POLICY "Managers can remove members or users leave" ON mess_members FOR DELETE USING (user_id = auth.uid() OR is_mess_manager(mess_id));
 
@@ -274,15 +276,45 @@ CREATE POLICY "Managers can manage months" ON months FOR ALL USING (is_mess_mana
 
 -- 4.5 MEALS
 CREATE POLICY "View meals of joined mess" ON meals FOR SELECT USING (exists (select 1 from months where months.id = meals.month_id and is_mess_member(months.mess_id)));
-CREATE POLICY "Managers can manage meals" ON meals FOR ALL USING (exists (select 1 from months where months.id = meals.month_id and is_mess_manager(months.mess_id)));
+-- Allow Managers OR Members with 'can_manage_meals'
+CREATE POLICY "Managers or permitted members can manage meals" ON meals FOR ALL USING (
+  exists (
+    select 1 from months m
+    join mess_members mm on mm.mess_id = m.mess_id
+    where m.id = meals.month_id
+    and mm.user_id = auth.uid()
+    and (mm.role = 'manager' OR mm.can_manage_meals = true)
+    and mm.status = 'active'
+  )
+);
 
 -- 4.6 DEPOSITS
 CREATE POLICY "View deposits of joined mess" ON deposits FOR SELECT USING (exists (select 1 from months where months.id = deposits.month_id and is_mess_member(months.mess_id)));
-CREATE POLICY "Managers can manage deposits" ON deposits FOR ALL USING (exists (select 1 from months where months.id = deposits.month_id and is_mess_manager(months.mess_id)));
+-- Allow Managers OR Members with 'can_manage_finance'
+CREATE POLICY "Managers or permitted members can manage deposits" ON deposits FOR ALL USING (
+  exists (
+    select 1 from months m
+    join mess_members mm on mm.mess_id = m.mess_id
+    where m.id = deposits.month_id
+    and mm.user_id = auth.uid()
+    and (mm.role = 'manager' OR mm.can_manage_finance = true)
+    and mm.status = 'active'
+  )
+);
 
 -- 4.7 EXPENSES
 CREATE POLICY "View expenses of joined mess" ON expenses FOR SELECT USING (exists (select 1 from months where months.id = expenses.month_id and is_mess_member(months.mess_id)));
-CREATE POLICY "Managers can manage expenses" ON expenses FOR ALL USING (exists (select 1 from months where months.id = expenses.month_id and is_mess_manager(months.mess_id)));
+-- Allow Managers OR Members with 'can_manage_finance'
+CREATE POLICY "Managers or permitted members can manage expenses" ON expenses FOR ALL USING (
+  exists (
+    select 1 from months m
+    join mess_members mm on mm.mess_id = m.mess_id
+    where m.id = expenses.month_id
+    and mm.user_id = auth.uid()
+    and (mm.role = 'manager' OR mm.can_manage_finance = true)
+    and mm.status = 'active'
+  )
+);
 
 -- 4.8 EXPENSE ALLOCATIONS
 CREATE POLICY "View allocations of joined mess" ON expense_allocations FOR SELECT USING (exists (select 1 from expenses e join months m on m.id = e.month_id where e.id = expense_allocations.expense_id and is_mess_member(m.mess_id)));

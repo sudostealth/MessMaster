@@ -120,7 +120,7 @@ export async function addBulkMeals(formData: FormData) {
               const { data: existing } = await supabase.from("meals").select("id").eq("month_id", activeMonth.id).eq("user_id", m.user_id).eq("date", date).maybeSingle()
               
               if (existing) {
-                  await supabase.from("meals").update({ breakfast, lunch, dinner }).eq("id", existing.id)
+                  await supabase.from("meals").update({ breakfast, lunch, dinner, added_by: user.id }).eq("id", existing.id)
               } else {
                   await supabase.from("meals").insert({
                       month_id: activeMonth.id,
@@ -128,7 +128,8 @@ export async function addBulkMeals(formData: FormData) {
                       date,
                       breakfast,
                       lunch,
-                      dinner
+                      dinner,
+                      added_by: user.id
                   })
               }
           }
@@ -208,7 +209,8 @@ export async function bulkUpsertMeals(date: string, values: { breakfast: number,
       date: date,
       breakfast: values.breakfast,
       lunch: values.lunch,
-      dinner: values.dinner
+      dinner: values.dinner,
+      added_by: user.id
   }))
 
   const { error } = await supabase.from("meals").upsert(upsertData, { onConflict: 'user_id, date, month_id' })
