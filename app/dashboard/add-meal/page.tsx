@@ -81,7 +81,7 @@ export default function AddMealPage() {
                       <div className="space-y-2">
                           <Label htmlFor="date" className="text-foreground/80 font-medium">Date</Label>
                           <div className="relative">
-                            <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                             <Input
                               id="date"
                               name="date"
@@ -95,7 +95,7 @@ export default function AddMealPage() {
                       <div className="space-y-2">
                           <Label htmlFor="member" className="text-foreground/80 font-medium">Member</Label>
                           <div className="relative">
-                            <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                             <select
                                 id="member"
                                 name="memberId"
@@ -107,7 +107,7 @@ export default function AddMealPage() {
                                     <option key={m.user_id} value={m.user_id}>{m.profiles?.name}</option>
                                 ))}
                             </select>
-                            <ChevronDown className="absolute right-3 top-3.5 h-4 w-4 text-muted-foreground pointer-events-none opacity-50" />
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none opacity-50" />
                           </div>
                       </div>
                    </div>
