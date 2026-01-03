@@ -69,14 +69,14 @@ export default function AddCostPage() {
                         <div className="space-y-2">
                             <Label className="font-medium">Date</Label>
                             <div className="relative">
-                                <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 <Input name="date" type="date" defaultValue={today} required className="pl-10 bg-background/50 h-11" />
                             </div>
                         </div>
                         <div className="space-y-2">
                             <Label className="font-medium">Amount</Label>
                             <div className="relative">
-                                <span className="absolute left-3 top-3 text-muted-foreground font-semibold">৳</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">৳</span>
                                 <Input name="amount" type="number" min="0" required className="pl-8 bg-background/50 h-11" placeholder="0.00" />
                             </div>
                         </div>
@@ -132,7 +132,7 @@ export default function AddCostPage() {
                         <div className="space-y-2">
                             <Label className="font-medium">Date</Label>
                             <div className="relative">
-                                <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 <Input name="date" type="date" defaultValue={today} required className="pl-10 bg-background/50 h-11" />
                             </div>
                         </div>
@@ -154,7 +154,7 @@ export default function AddCostPage() {
                         <div className="space-y-2">
                             <Label className="font-medium">Amount</Label>
                             <div className="relative">
-                                <span className="absolute left-3 top-3 text-muted-foreground font-semibold">৳</span>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">৳</span>
                                 <Input name="amount" type="number" min="0" required className="pl-8 bg-background/50 h-11" placeholder="0.00" />
                             </div>
                         </div>
@@ -191,14 +191,14 @@ export default function AddCostPage() {
                             <div className="space-y-2">
                                 <Label className="font-medium">Date</Label>
                                 <div className="relative">
-                                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                     <Input name="date" type="date" defaultValue={today} required className="pl-10 bg-background/50 h-11" />
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <Label className="font-medium">Amount</Label>
                                 <div className="relative">
-                                    <span className="absolute left-3 top-3 text-muted-foreground font-semibold">৳</span>
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">৳</span>
                                     <Input name="amount" type="number" min="0" required className="pl-8 bg-background/50 h-11" placeholder="0.00" />
                                 </div>
                             </div>
@@ -207,14 +207,14 @@ export default function AddCostPage() {
                         <div className="space-y-2">
                             <Label className="font-medium">Allocated To (Who owes?)</Label>
                             <div className="relative">
-                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 <select name="memberId" className="flex h-11 w-full appearance-none rounded-md border border-input bg-background/50 pl-10 pr-8 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-background" required>
                                     <option value="">Select Member</option>
                                     {members.map((m: any) => (
                                         <option key={m.user_id} value={m.user_id}>{m.profiles?.name}</option>
                                     ))}
                                 </select>
-                                <ChevronDown className="absolute right-3 top-3.5 h-4 w-4 text-muted-foreground pointer-events-none opacity-50" />
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none opacity-50" />
                             </div>
                         </div>
 

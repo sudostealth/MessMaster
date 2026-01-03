@@ -28,6 +28,18 @@ export async function createMess(formData: FormData) {
      }
   }
 
+  // Check if user is already in a mess (active or pending)
+  const { data: currentMembership } = await supabase
+    .from("mess_members")
+    .select("id")
+    .eq("user_id", userId)
+    .in("status", ["active", "pending"])
+    .maybeSingle()
+
+  if (currentMembership) {
+      return { error: "You are already a member of a mess. Please leave your current mess first." }
+  }
+
   // 1. Create Mess
   const code = Math.random().toString(36).substring(2, 8).toUpperCase()
   
@@ -41,7 +53,12 @@ export async function createMess(formData: FormData) {
     .select()
     .single()
 
-  if (messError) return { error: messError.message }
+  if (messError) {
+      if (messError.code === '23505') { // Unique violation
+          if (messError.message.includes("name")) return { error: "A mess with this name already exists." }
+      }
+      return { error: messError.message }
+  }
 
   // 2. Add Creator as Manager in Mess Members
   const { error: memberError } = await supabase
@@ -82,6 +99,21 @@ export async function joinMess(formData: FormData) {
     .single()
 
   if (messError || !mess) return { error: "Mess not found with this code" }
+
+  // Check if user is already in ANY mess (active or pending)
+  const { data: currentAnyMembership } = await supabase
+    .from("mess_members")
+    .select("id, mess_id, status")
+    .eq("user_id", userId)
+    .in("status", ["active", "pending"])
+    .maybeSingle()
+
+  if (currentAnyMembership) {
+      if (currentAnyMembership.mess_id !== mess.id) {
+          return { error: "You are already a member of another mess." }
+      }
+      // If same mess, handle below
+  }
 
   // 2. Check if user was previously a member (even if removed/rejected)
   const { data: existingMember } = await supabase
@@ -366,7 +398,19 @@ export async function addMemberByEmail(formData: FormData) {
   
   if (!profile) return { error: "User not found with this email. They must sign up first." }
 
-  // 3. Check if already member
+  // Check if target user is already in ANY mess
+  const { data: targetMembership } = await supabase
+    .from("mess_members")
+    .select("mess_id")
+    .eq("user_id", profile.id)
+    .in("status", ["active", "pending"])
+    .maybeSingle()
+
+  if (targetMembership) {
+      return { error: "This user is already a member of a mess." }
+  }
+
+  // 3. Check if already member of THIS mess (redundant but safe for history)
   const { data: existing } = await supabase.from("mess_members")
     .select("status")
     .eq("mess_id", manager.mess_id)
