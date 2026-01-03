@@ -2,10 +2,10 @@
 
 import { createClient } from "@/lib/supabase/server"
 
-export async function broadcastNotification(messId: string, title: string, message: string, excludeUserId?: string) {
+export async function broadcastNotification(messId: string, title: string, message: string, excludeUserId?: string, monthId?: string) {
   const supabase = await createClient()
 
-  // Het active members
+  // Get active members
   const { data: members, error } = await supabase
     .from("mess_members")
     .select("user_id")
@@ -21,6 +21,7 @@ export async function broadcastNotification(messId: string, title: string, messa
         title,
         message,
         mess_id: messId,
+        month_id: monthId || null,
         created_at: new Date().toISOString()
     }))
 
