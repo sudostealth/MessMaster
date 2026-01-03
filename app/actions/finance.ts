@@ -51,7 +51,9 @@ export async function addDeposit(formData: FormData) {
   await broadcastNotification(
       member.mess_id, 
       "New Deposit", 
-      `Deposit of ৳${amount} recorded for ${depositorName}.`
+      `Deposit of ৳${amount} recorded for ${depositorName}.`,
+      undefined,
+      activeMonth.id
   )
   
   revalidatePath("/dashboard/finance")
@@ -163,7 +165,7 @@ export async function addCost(formData: FormData) {
       })
   }
 
-  await broadcastNotification(member.mess_id, "New Expense", `Expense of ৳${amount} for ${category} added.`)
+  await broadcastNotification(member.mess_id, "New Expense", `Expense of ৳${amount} for ${category} added.`, undefined, activeMonth.id)
 
   revalidatePath("/dashboard/finance")
   return { success: true }
