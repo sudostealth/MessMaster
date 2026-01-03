@@ -40,6 +40,7 @@ export default async function FinanceDetailsPage() {
         details,
         category,
         shopper_id,
+        involved_members,
         profiles:shopper_id(name),
         added_by_profile:profiles!expenses_added_by_fkey(name)
     `)

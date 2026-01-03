@@ -97,66 +97,70 @@ export async function addCost(formData: FormData) {
     return { error: `Insufficient Mess Balance. Current Balance: ৳${(totalDeposits - totalExpenses).toFixed(2)}` }
   }
 
-  // Shopper ID is required for all
-  const shopperIds = formData.getAll("shopperIds") as string[]
-  const singleShopperId = formData.get("shopperId") as string // fallback for shared/individual tabs that might still use single select
-
-  // If "meal" category, we might have multiple shoppers
-  const finalShopperIds = shopperIds.length > 0 ? shopperIds : (singleShopperId ? [singleShopperId] : [])
+  // Fetch Shopper/Responsible Member Names for "involved_members" column
+  let involvedMembersText = ""
   
-  if (finalShopperIds.length === 0) return { error: "Paid By (Shopper) is required" }
+  if (category === 'meal') {
+      const shopperIds = formData.getAll("shopperIds") as string[]
+      if (shopperIds.length === 0) return { error: "Shoppers are required" }
 
-  const amountPerShopper = amount / finalShopperIds.length
+      const { data: shoppers } = await supabase.from("profiles").select("name").in("id", shopperIds)
+      involvedMembersText = shoppers?.map(s => s.name).join(", ") || ""
+  }
+  else if (category === 'shared') {
+      // Logic for Shared: No "Paid By". Logic: Amount reduced from Mess Balance. Allocated to selected members.
+      const allocatedMemberIds = formData.getAll("allocatedMemberIds") as string[]
+      if (allocatedMemberIds.length === 0) return { error: "Please select members to share the cost" }
 
-  for (const sId of finalShopperIds) {
-      const { data: expense, error } = await supabase
-        .from("expenses")
-        .insert({
-          month_id: activeMonth.id,
-          added_by: user.id,
-          amount: amountPerShopper, // Split amount
-          date,
-          category,
-          details: finalShopperIds.length > 1 ? `${details} (Split with ${finalShopperIds.length} shoppers)` : details,
-          shopper_id: sId
-        })
-        .select()
-        .single()
+      const { data: members } = await supabase.from("profiles").select("name").in("id", allocatedMemberIds)
+      involvedMembersText = members?.map(m => m.name).join(", ") || ""
+  }
+  else if (category === 'individual') {
+      // Logic for Individual: No "Paid By". Allocated to ONE member.
+      const targetMemberId = formData.get("memberId") as string
+      if (!targetMemberId) return { error: "Target Member is required" }
 
-      if (error) return { error: error.message }
+      const { data: member } = await supabase.from("profiles").select("name").eq("id", targetMemberId).single()
+      involvedMembersText = member?.name || ""
+  }
 
-      // Handle Allocations (Only doing this once per split expense is technically redundant but valid logic-wise as allocation links to expense_id)
-      // Actually, if we have shared cost split, we want the *total* shared amount allocated.
-      // But if we split the expense record itself, each expense record warrants its own allocation logic?
-      // Wait, if 2 people buy a 1000 shared item (500 each), the total cost is 1000. 
-      // Expense 1: 500 (Shopper A). Allocations linked to Expense 1?
-      // Expense 2: 500 (Shopper B). Allocations linked to Expense 2?
-      // Yes, this works. The sum of allocations = sum of expenses = total cost.
+  // Insert ONE Expense Record
+  const { data: expense, error } = await supabase
+    .from("expenses")
+    .insert({
+      month_id: activeMonth.id,
+      added_by: user.id,
+      amount: amount,
+      date,
+      category,
+      details,
+      involved_members: involvedMembersText,
+      shopper_id: null // Explicitly null as we use involved_members text now
+    })
+    .select()
+    .single()
+
+  if (error) return { error: error.message }
+
+  // Handle Allocations
+  if (category === 'shared') {
+      const allocatedMemberIds = formData.getAll("allocatedMemberIds") as string[]
+      const splitAmount = amount / allocatedMemberIds.length
       
-      if (category === 'shared') {
-          const allocatedMemberIds = formData.getAll("allocatedMemberIds") as string[]
-          if (allocatedMemberIds.length > 0) {
-             const splitAmount = amountPerShopper / allocatedMemberIds.length
-             const allocations = allocatedMemberIds.map(uid => ({
-                  expense_id: expense.id,
-                  user_id: uid,
-                  amount: splitAmount
-             }))
-             await supabase.from("expense_allocations").insert(allocations)
-          } else {
-             // Fallback or Error? If no members selected for shared cost, it's orphan cost.
-             // But UI has defaultChecked.
-          }
-      } else if (category === 'individual') {
-          const memberId = formData.get("memberId") as string
-          if (memberId) {
-              await supabase.from("expense_allocations").insert({
-                  expense_id: expense.id,
-                  user_id: memberId,
-                  amount: amountPerShopper
-              })
-          }
-      }
+      const allocations = allocatedMemberIds.map(uid => ({
+          expense_id: expense.id,
+          user_id: uid,
+          amount: splitAmount
+      }))
+      await supabase.from("expense_allocations").insert(allocations)
+  }
+  else if (category === 'individual') {
+      const targetMemberId = formData.get("memberId") as string
+      await supabase.from("expense_allocations").insert({
+          expense_id: expense.id,
+          user_id: targetMemberId,
+          amount: amount
+      })
   }
 
   await broadcastNotification(member.mess_id, "New Expense", `Expense of ৳${amount} for ${category} added.`)

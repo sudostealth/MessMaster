@@ -112,8 +112,13 @@ export function FinanceManager({ expenses, deposits, currentUserId, isManager }:
                                <div>
                                    <p className="font-medium text-sm">{expense.details || expense.category}</p>
                                    <p className="text-xs text-muted-foreground">
-                                       {format(new Date(expense.date), "MMM d, yyyy")} • {t("paid_by")} {expense.profiles?.name || "Unknown"}
-                                       {expense.added_by_profile && expense.added_by_profile.name !== expense.profiles?.name && (
+                                       {format(new Date(expense.date), "MMM d, yyyy")}
+                                       {expense.involved_members ? (
+                                           <> • <span className="font-medium">Shoppers:</span> {expense.involved_members}</>
+                                       ) : (
+                                           <> • {t("paid_by")} {expense.profiles?.name || "Unknown"}</>
+                                       )}
+                                       {expense.added_by_profile && (
                                             <span className="block text-[10px] opacity-75">
                                                 {t("added_by")} {expense.added_by_profile.name}
                                             </span>
@@ -145,8 +150,13 @@ export function FinanceManager({ expenses, deposits, currentUserId, isManager }:
                                <div>
                                    <p className="font-medium text-sm">{expense.details || expense.category}</p>
                                    <p className="text-xs text-muted-foreground">
-                                       {format(new Date(expense.date), "MMM d, yyyy")} • {t("paid_by")} {expense.profiles?.name || "Unknown"}
-                                       {expense.added_by_profile && expense.added_by_profile.name !== expense.profiles?.name && (
+                                       {format(new Date(expense.date), "MMM d, yyyy")}
+                                       {expense.involved_members ? (
+                                           <> • <span className="font-medium">Members:</span> {expense.involved_members}</>
+                                       ) : (
+                                           <> • {t("paid_by")} {expense.profiles?.name || "Unknown"}</>
+                                       )}
+                                       {expense.added_by_profile && (
                                             <span className="block text-[10px] opacity-75">
                                                 {t("added_by")} {expense.added_by_profile.name}
                                             </span>
