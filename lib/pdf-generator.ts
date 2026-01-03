@@ -37,11 +37,48 @@ interface ReportData {
     }
 }
 
-export const generateMonthReportPDF = (data: ReportData) => {
+// Function to fetch and load NotoSansBengali font
+async function loadBanglaFont(doc: jsPDF) {
+    try {
+        const fontUrl = "https://raw.githubusercontent.com/google/fonts/main/ofl/notosansbengali/NotoSansBengali-Regular.ttf"
+        const response = await fetch(fontUrl)
+        if (!response.ok) throw new Error("Failed to fetch font")
+
+        const buffer = await response.arrayBuffer()
+
+        // Convert ArrayBuffer to Base64 (Standard browser approach)
+        let binary = ''
+        const bytes = new Uint8Array(buffer)
+        const len = bytes.byteLength
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i])
+        }
+        const base64Font = window.btoa(binary)
+
+        // Add font to VFS
+        doc.addFileToVFS("NotoSansBengali-Regular.ttf", base64Font)
+        doc.addFont("NotoSansBengali-Regular.ttf", "NotoSansBengali", "normal")
+        return true
+    } catch (error) {
+        console.error("Error loading font:", error)
+        return false
+    }
+}
+
+export const generateMonthReportPDF = async (data: ReportData) => {
     const doc = new jsPDF()
+
+    // Load and set font
+    const fontLoaded = await loadBanglaFont(doc)
+    if (fontLoaded) {
+        doc.setFont("NotoSansBengali")
+    } else {
+        doc.setFont("helvetica")
+    }
 
     // Common Styles
     const redHeaderColor: [number, number, number] = [220, 38, 38]
+    const defaultTextColor: [number, number, number] = [0, 0, 0]
 
     // Helper: Add Watermark
     const addWatermark = (pdfDoc: jsPDF) => {
@@ -50,12 +87,16 @@ export const generateMonthReportPDF = (data: ReportData) => {
             pdfDoc.setPage(i)
             pdfDoc.setTextColor(230, 230, 230)
             pdfDoc.setFontSize(60)
+            // Use Helvetica for watermark as it's standard ASCII art text essentially
             pdfDoc.setFont("helvetica", "bold")
             // Rotate text 45 degrees
             pdfDoc.saveGraphicsState()
             pdfDoc.setGState(new (pdfDoc as any).GState({ opacity: 0.1 }))
             pdfDoc.text("Mess Manager", 50, 150, { angle: 45 })
             pdfDoc.restoreGraphicsState()
+
+            // Restore Bangla font
+            if(fontLoaded) pdfDoc.setFont("NotoSansBengali", "normal")
         }
     }
 
@@ -71,7 +112,12 @@ export const generateMonthReportPDF = (data: ReportData) => {
     // --- Header ---
     doc.setFontSize(18)
     doc.setTextColor(...redHeaderColor)
-    doc.setFont("helvetica", "bold")
+    // Keep header in Bangla font just in case mess name is Bangla?
+    // Actually, "Mess Manager:..." is English.
+    // Ideally mix fonts, but jspdf handles one font active.
+    // If the data contains Bangla, we MUST use the Bangla font.
+    // NotoSansBengali usually supports Latin too.
+
     doc.text("Mess Manager: Find Meal Expense Easily", 105, 15, { align: "center" })
 
     doc.setFontSize(14)
@@ -85,8 +131,8 @@ export const generateMonthReportPDF = (data: ReportData) => {
     // --- Mess Details Section ---
     let yPos = 40
     doc.setFontSize(10)
-    doc.setTextColor(0, 0, 0)
-    doc.setFont("helvetica", "normal")
+    doc.setTextColor(...defaultTextColor)
+    if(fontLoaded) doc.setFont("NotoSansBengali", "normal")
 
     const details = [
         `Mess Name: ${data.messName}`,
@@ -123,9 +169,13 @@ export const generateMonthReportPDF = (data: ReportData) => {
             m.totalCost.toFixed(2),
             m.balance.toFixed(2)
         ]),
+        styles: {
+            font: fontLoaded ? "NotoSansBengali" : "helvetica",
+            textColor: [0, 0, 0],
+            fontSize: 9
+        },
         headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1, fontStyle: 'bold' },
         bodyStyles: { lineColor: [0, 0, 0], lineWidth: 0.1 },
-        styles: { textColor: [0, 0, 0], fontSize: 9 },
         theme: 'grid'
     })
 
@@ -142,7 +192,7 @@ export const generateMonthReportPDF = (data: ReportData) => {
     data.groupedMeals.forEach(group => {
         yPos = checkPageBreak(yPos)
         doc.setFontSize(11)
-        doc.setTextColor(0, 0, 0)
+        doc.setTextColor(...defaultTextColor)
         doc.text(`Meal Details for: ${group.memberName}`, 14, yPos)
         yPos += 2
 
@@ -156,9 +206,9 @@ export const generateMonthReportPDF = (data: ReportData) => {
                     m.lunch,
                     m.dinner
                 ]),
+                styles: { font: fontLoaded ? "NotoSansBengali" : "helvetica", fontSize: 9, textColor: [0, 0, 0] },
                 headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1, fontStyle: 'bold' },
                 bodyStyles: { lineColor: [0, 0, 0], lineWidth: 0.1 },
-                styles: { textColor: [0, 0, 0], fontSize: 9 },
                 theme: 'grid',
                 // Keep table together if possible
                 pageBreak: 'auto'
@@ -190,6 +240,7 @@ export const generateMonthReportPDF = (data: ReportData) => {
                 e.shopperName,
                 e.amount.toFixed(2)
             ]),
+            styles: { font: fontLoaded ? "NotoSansBengali" : "helvetica", fontSize: 9, textColor: [0, 0, 0] },
             headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1, fontStyle: 'bold' },
             bodyStyles: { lineColor: [0, 0, 0], lineWidth: 0.1 },
             theme: 'grid'
@@ -217,6 +268,7 @@ export const generateMonthReportPDF = (data: ReportData) => {
                 d.memberName,
                 d.amount.toFixed(2)
             ]),
+            styles: { font: fontLoaded ? "NotoSansBengali" : "helvetica", fontSize: 9, textColor: [0, 0, 0] },
             headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1, fontStyle: 'bold' },
             bodyStyles: { lineColor: [0, 0, 0], lineWidth: 0.1 },
             theme: 'grid'
@@ -245,6 +297,7 @@ export const generateMonthReportPDF = (data: ReportData) => {
                 e.shopperName,
                 e.amount.toFixed(2)
             ]),
+            styles: { font: fontLoaded ? "NotoSansBengali" : "helvetica", fontSize: 9, textColor: [0, 0, 0] },
             headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineColor: [0, 0, 0], lineWidth: 0.1, fontStyle: 'bold' },
             bodyStyles: { lineColor: [0, 0, 0], lineWidth: 0.1 },
             theme: 'grid'
@@ -258,6 +311,8 @@ export const generateMonthReportPDF = (data: ReportData) => {
     doc.setFontSize(8)
     for(let i = 1; i <= pageCount; i++) {
         doc.setPage(i)
+        // Switch to Helvetica for footer as it's English
+        doc.setFont("helvetica")
         doc.text("By MESS MANAGER, " + new Date().toLocaleDateString(), 14, doc.internal.pageSize.height - 10)
         doc.text("Download Mobile App", doc.internal.pageSize.width - 40, doc.internal.pageSize.height - 10)
     }

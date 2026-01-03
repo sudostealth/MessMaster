@@ -55,7 +55,11 @@ const config: Config = {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
-  		}
+		},
+		fontFamily: {
+			sans: ["var(--font-geist-sans)", "var(--font-noto-sans-bengali)", "ui-sans-serif", "system-ui", "sans-serif"],
+			mono: ["var(--font-geist-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
+		}
   	}
   },
   plugins: [require("tailwindcss-animate")],

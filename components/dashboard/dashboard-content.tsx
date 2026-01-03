@@ -52,7 +52,7 @@ export function DashboardContent({ user, membership, stats, message }: Dashboard
                 }
 
                 // @ts-expect-error
-                generateMonthReportPDF(res)
+                await generateMonthReportPDF(res)
                 toast.success("Report generated successfully")
              } catch (error) {
                 console.error(error)
