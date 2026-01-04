@@ -1,9 +1,10 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createClient as createSupabaseAdmin } from "@supabase/supabase-js"
 import { revalidatePath } from "next/cache"
 
-export async function addMember(formData: FormData) {
+export async function createMemberAccount(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "Not authenticated" }
@@ -13,44 +14,76 @@ export async function addMember(formData: FormData) {
   const password = formData.get("password") as string
   const phone = formData.get("phone") as string
 
-  // 1. Get Manager's Mess
+  if (!name || !email || !password) return { error: "Name, Email and Password are required" }
+
+  // 1. Check Manager Permission
   const { data: manager } = await supabase
     .from("mess_members")
-    .select("mess_id")
+    .select("mess_id, role")
     .eq("user_id", user.id)
-    .eq("role", "manager")
     .single()
 
-  if (!manager) return { error: "You are not a manager" }
+  if (!manager || manager.role !== 'manager') {
+      return { error: "Unauthorized: Only managers can create accounts." }
+  }
 
-  // 2. Create Auth User (Admin API needed usually, but we are using client sign up flow usually).
-  // SINCE we don't have Service Role Key usage enabled easily for "Admin" actions in this context without exposing it,
-  // AND we want to "Create member profile with name... and demo password",
-  // A common pattern without Admin API is: Manager creates a "Pre-approved" email or invite.
-  // BUT the prompt says "Manager can create member profile... demo email and demo password".
-  // This implies creating a User account.
-  // To create a user *programmatically* without logging out the manager, we strictly need `supabase.auth.admin.createUser`.
-  // This requires `service_role` key. 
-  // I will assume for this implementation we simulate it or I can try to use standard signUp if it doesn't auto-login, but JS client usually auto-logs in.
-  // Actually, `supabase.auth.signUp` DOES auto-login on client, but on SERVER (SSR), it might not set cookies for the *requesting* user if we use a fresh client?
-  // No, `createServerClient` uses cookies.
-  // We need a strictly ADMIN client for this.
+  // 2. Initialize Admin Client
+  // Using the key provided for this specific task
+  const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "sb_secret_2ETHFLaILZB1mt2Tqhhb7A_dG5ohVEj"
+  const ADMIN_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+
+  if (!SERVICE_KEY || !ADMIN_URL) return { error: "Server configuration error" }
+
+  const adminAuth = createSupabaseAdmin(ADMIN_URL, SERVICE_KEY, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+
+  // 3. Create Auth User
+  const { data: newUser, error: createError } = await adminAuth.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { name, phone }
+  })
+
+  if (createError) {
+      return { error: createError.message }
+  }
+
+  if (!newUser.user) return { error: "Failed to create user" }
+
+  // 4. Add to Mess Members
+  const { error: memberError } = await adminAuth
+    .from("mess_members")
+    .insert({
+        mess_id: manager.mess_id,
+        user_id: newUser.user.id,
+        role: 'member',
+        status: 'active',
+        can_manage_meals: false,
+        can_manage_finance: false,
+        can_manage_members: false
+    })
+
+  if (memberError) {
+      // Cleanup if possible? Or just return error.
+      // If we fail here, we have an orphan user.
+      await adminAuth.auth.admin.deleteUser(newUser.user.id)
+      return { error: "Failed to add member to mess: " + memberError.message }
+  }
   
-  // workaround: Insert into a "invites" table? No, prompt says create profile.
-  // I will try to use a separate client instance if possible, or just insert into `profiles` and `mess_members` and let the user "Claim" it?
-  // The 'Users' table is managed by Auth.
-  // Let's assume I can't create a real Auth user easily without Service Role.
-  // I will write a note about this limitation or try to implement `service_role` usage if I ask the user for it?
-  // The prompt asked for "demo email and password which can be changed".
-  // I will skip the actual Auth User creation for a moment and just insert a "Dummy" profile? No, that breaks relations.
+  // 5. Explicitly ensure Profile is updated
+  // The trigger 'handle_new_user' runs on AUTH creation, but we explicitly update to ensure phone is set if metadata failed.
+  await adminAuth
+    .from("profiles")
+    .update({ name, phone })
+    .eq("id", newUser.user.id)
+
+  revalidatePath("/dashboard/members")
+  revalidatePath("/dashboard/add-member")
   
-  // PROPER WAY: Use Service Role Key.
-  // Since I don't have it, I'll assume the user will provide it or I'll implement a "Invite" flow where I just store the email in `mess_members` with status `invited`.
-  // BUT the prompt is specific: "Create member profile... demo password".
-  // I'll assume for now I can't do the password part securely without Admin. 
-  // I will implement "Add Member" as "Generate Join Link/Code" OR "Add Pre-approved Email".
-  // Wait, I can try to use `signUp` with a secondary `supabase` client that doesn't persist session?
-  // Let's try that.
-  
-  return { error: "Creating accounts requires Admin privileges. Please Invite them via Mess Code for now." }
+  return { success: true }
 }
