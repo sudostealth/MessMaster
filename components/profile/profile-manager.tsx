@@ -6,14 +6,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Shield, AlertTriangle, LogOut } from "lucide-react"
-import { updateProfile } from "@/app/actions/auth"
-import { leaveMess } from "@/app/actions/mess"
+import { Shield, AlertTriangle, Key, Mail, Lock, Loader2 } from "lucide-react"
+import { updateProfile, updateEmail, updatePassword } from "@/app/actions/auth"
+import { deleteMess, leaveMess } from "@/app/actions/mess"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 export function ProfileManager({ profile, messId }: { profile: any, messId?: string }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [emailLoading, setEmailLoading] = useState(false)
+  const [passwordLoading, setPasswordLoading] = useState(false)
   
   const initials = profile.name ? profile.name.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase() : "U"
 
@@ -21,8 +24,35 @@ export function ProfileManager({ profile, messId }: { profile: any, messId?: str
       setLoading(true)
       const res = await updateProfile(formData)
       setLoading(false)
-      if (res.error) alert(res.error)
-      else alert("Profile updated!")
+      if (res.error) toast.error(res.error)
+      else toast.success("Profile updated!")
+  }
+
+  async function handleEmailUpdate(formData: FormData) {
+      setEmailLoading(true)
+      const email = formData.get("email") as string
+      if (email === profile.email) {
+          setEmailLoading(false)
+          return
+      }
+      const res = await updateEmail(email)
+      setEmailLoading(false)
+      if (res.error) toast.error(res.error)
+      else toast.success("Email update confirmation sent to both emails.")
+  }
+
+  async function handlePasswordUpdate(formData: FormData) {
+      setPasswordLoading(true)
+      const password = formData.get("password") as string
+      const res = await updatePassword(password)
+      setPasswordLoading(false)
+      if (res.error) toast.error(res.error)
+      else {
+          toast.success("Password updated successfully!")
+          // Optional: clear the input
+          const form = document.getElementById("password-form") as HTMLFormElement
+          if(form) form.reset()
+      }
   }
 
   async function handleLeave() {
@@ -30,7 +60,7 @@ export function ProfileManager({ profile, messId }: { profile: any, messId?: str
           setLoading(true)
           const res = await leaveMess()
           if(res.error) {
-              alert(res.error)
+              toast.error(res.error)
               setLoading(false)
           } else {
               router.push("/dashboard")
@@ -72,20 +102,63 @@ export function ProfileManager({ profile, messId }: { profile: any, messId?: str
                          <Label>Phone Number</Label>
                          <Input name="phone" defaultValue={profile.phone} />
                       </div>
-                      <div className="space-y-2 md:col-span-2">
-                         <Label>Email Address</Label>
-                         <Input defaultValue={profile.email} disabled className="bg-muted/50 cursor-not-allowed" />
-                      </div>
                    </div>
                    <div className="flex justify-end pt-4">
-                      <Button type="submit" disabled={loading}>Save Changes</Button>
+                      <Button type="submit" disabled={loading}>
+                          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                          Save Changes
+                      </Button>
                    </div>
                 </form>
              </CardContent>
           </Card>
+
+          {/* Security Settings */}
+          <Card className="glass-card md:col-span-2">
+              <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                      <Key className="h-5 w-5"/> Security Settings
+                  </CardTitle>
+                  <CardDescription>Manage your account credentials.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                  {/* Email Update */}
+                  <form action={handleEmailUpdate} className="space-y-4 pb-6 border-b">
+                      <div className="space-y-2">
+                          <Label>Email Address</Label>
+                          <div className="flex gap-4">
+                              <div className="relative flex-1">
+                                <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input name="email" defaultValue={profile.email} className="pl-9" required />
+                              </div>
+                              <Button type="submit" variant="outline" disabled={emailLoading}>
+                                  {emailLoading ? <Loader2 className="h-4 w-4 animate-spin"/> : "Update"}
+                              </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Changing email requires confirmation on both new and old addresses.</p>
+                      </div>
+                  </form>
+
+                  {/* Password Update */}
+                  <form id="password-form" action={handlePasswordUpdate} className="space-y-4">
+                      <div className="space-y-2">
+                          <Label>Change Password</Label>
+                          <div className="flex gap-4">
+                              <div className="relative flex-1">
+                                <Lock className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input name="password" type="password" placeholder="New Password" className="pl-9" required minLength={6} />
+                              </div>
+                              <Button type="submit" variant="outline" disabled={passwordLoading}>
+                                  {passwordLoading ? <Loader2 className="h-4 w-4 animate-spin"/> : "Update"}
+                              </Button>
+                          </div>
+                      </div>
+                  </form>
+              </CardContent>
+          </Card>
            
           {messId && (
-              <Card className="glass-card border-red-500/20 bg-red-500/5">
+              <Card className="glass-card border-red-500/20 bg-red-500/5 md:col-span-2">
                  <CardHeader><CardTitle className="text-red-600 flex items-center gap-2"><AlertTriangle className="h-5 w-5"/> Danger Zone</CardTitle></CardHeader>
                  <CardContent className="space-y-4">
                     {profile.role === 'manager' ? (
@@ -113,18 +186,16 @@ export function ProfileManager({ profile, messId }: { profile: any, messId?: str
   )
 }
 
-import { deleteMess } from "@/app/actions/mess"
-
 function DeleteMessButton({ messId }: { messId?: string }) {
     // Client component for the button logic
     const handleDelete = async () => {
         if (!messId) {
-            alert("Error: Mess ID not found");
+            toast.error("Error: Mess ID not found");
             return;
         }
         if (confirm("Are you ABSOLUTELY sure? This action cannot be undone.")) {
             const res = await deleteMess(messId);
-            if (res.error) alert(res.error);
+            if (res.error) toast.error(res.error);
         }
     }
     

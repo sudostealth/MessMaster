@@ -26,6 +26,30 @@ export async function updateProfile(formData: FormData) {
     return { success: true }
 }
 
+export async function updateEmail(email: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: "Not authenticated" }
+
+    const { error } = await supabase.auth.updateUser({ email })
+
+    if (error) return { error: error.message }
+
+    return { success: true }
+}
+
+export async function updatePassword(password: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: "Not authenticated" }
+
+    const { error } = await supabase.auth.updateUser({ password })
+
+    if (error) return { error: error.message }
+
+    return { success: true }
+}
+
 export async function signOut() {
   const supabase = await createClient()
   await supabase.auth.signOut()
