@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/contexts/language-context"
 import { TrendingUp, TrendingDown, Trash2, Edit2, MoreHorizontal, ArrowDownLeft } from "lucide-react"
 import { deleteDeposit, deleteExpense } from "@/app/actions/finance"
-import { AddBorrowDialog } from "./add-borrow-dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,11 +69,6 @@ export function FinanceManager({ expenses, deposits, currentUserId, isManager }:
               <h2 className="text-3xl font-bold tracking-tight text-gradient">{t("finance")}</h2>
               <p className="text-muted-foreground">{t("balance")}: <span className={balance >= 0 ? "text-green-500" : "text-red-500"}>{balance.toFixed(2)}</span></p>
           </div>
-          {isManager && (
-              <div className="flex items-center gap-2">
-                   <AddBorrowDialog isManager={isManager} />
-              </div>
-          )}
        </div>
 
        <div className="grid gap-4 md:grid-cols-2">
@@ -99,10 +93,11 @@ export function FinanceManager({ expenses, deposits, currentUserId, isManager }:
        </div>
 
        <Tabs defaultValue="meal_cost" className="w-full">
-           <TabsList className="grid w-full grid-cols-3">
+           <TabsList className="grid w-full grid-cols-4">
                <TabsTrigger value="meal_cost">{t("meal_cost")}</TabsTrigger>
                <TabsTrigger value="other_cost">{t("other_cost")}</TabsTrigger>
                <TabsTrigger value="deposits">{t("deposits")}</TabsTrigger>
+               <TabsTrigger value="borrowed">{t("borrowed") || "Borrowed"}</TabsTrigger>
            </TabsList>
 
            <TabsContent value="meal_cost" className="space-y-4 mt-4">
@@ -182,21 +177,19 @@ export function FinanceManager({ expenses, deposits, currentUserId, isManager }:
            </TabsContent>
 
            <TabsContent value="deposits" className="space-y-4 mt-4">
-               {deposits.length === 0 ? (
+               {deposits.filter(d => Number(d.amount) >= 0).length === 0 ? (
                    <div className="text-center py-10 text-muted-foreground border border-dashed rounded-lg">{t("no_records")}</div>
                ) : (
-                   deposits.map((deposit) => {
-                       const isBorrow = Number(deposit.amount) < 0
-                       return (
+                   deposits.filter(d => Number(d.amount) >= 0).map((deposit) => (
                        <div key={deposit.id} className="flex items-center justify-between p-4 rounded-lg bg-card border glass hover:bg-muted/50 transition-colors">
                            <div className="flex items-center gap-4">
-                               <div className={`p-2 rounded-full ${isBorrow ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
-                                   {isBorrow ? <ArrowDownLeft className="h-4 w-4" /> : <TrendingUp className="h-4 w-4" />}
+                               <div className="p-2 rounded-full bg-green-500/10 text-green-500">
+                                   <TrendingUp className="h-4 w-4" />
                                </div>
                                <div>
-                                   <p className="font-medium text-sm">{deposit.details || (isBorrow ? "Borrowed" : "Deposit")}</p>
+                                   <p className="font-medium text-sm">{deposit.details || "Deposit"}</p>
                                    <p className="text-xs text-muted-foreground">
-                                       {format(new Date(deposit.date), "MMM d, yyyy")} • {isBorrow ? t("borrowed_by") || "Borrowed By" : t("paid_by")} {deposit.profiles?.name || "Unknown"}
+                                       {format(new Date(deposit.date), "MMM d, yyyy")} • {t("paid_by")} {deposit.profiles?.name || "Unknown"}
                                        {deposit.added_by_profile && deposit.added_by_profile.name !== deposit.profiles?.name && (
                                             <span className="block text-[10px] opacity-75">
                                                 {t("added_by")} {deposit.added_by_profile.name}
@@ -206,13 +199,46 @@ export function FinanceManager({ expenses, deposits, currentUserId, isManager }:
                                </div>
                            </div>
                            <div className="flex items-center gap-4">
-                               <div className={`font-bold ${isBorrow ? 'text-red-500' : 'text-green-500'}`}>
-                                   {isBorrow ? '' : '+'}{Number(deposit.amount).toFixed(2)}
+                               <div className="font-bold text-green-500">
+                                   +{Number(deposit.amount).toFixed(2)}
                                </div>
                                <ActionMenu id={deposit.id} type="deposit" onDelete={handleDeleteDeposit} />
                            </div>
                        </div>
-                   )})
+                   ))
+               )}
+           </TabsContent>
+
+           <TabsContent value="borrowed" className="space-y-4 mt-4">
+               {deposits.filter(d => Number(d.amount) < 0).length === 0 ? (
+                   <div className="text-center py-10 text-muted-foreground border border-dashed rounded-lg">{t("no_records")}</div>
+               ) : (
+                   deposits.filter(d => Number(d.amount) < 0).map((deposit) => (
+                       <div key={deposit.id} className="flex items-center justify-between p-4 rounded-lg bg-card border glass hover:bg-muted/50 transition-colors">
+                           <div className="flex items-center gap-4">
+                               <div className="p-2 rounded-full bg-red-500/10 text-red-500">
+                                   <ArrowDownLeft className="h-4 w-4" />
+                               </div>
+                               <div>
+                                   <p className="font-medium text-sm">{deposit.details || "Borrowed"}</p>
+                                   <p className="text-xs text-muted-foreground">
+                                       {format(new Date(deposit.date), "MMM d, yyyy")} • {t("borrowed_by") || "Borrowed By"} {deposit.profiles?.name || "Unknown"}
+                                       {deposit.added_by_profile && deposit.added_by_profile.name !== deposit.profiles?.name && (
+                                            <span className="block text-[10px] opacity-75">
+                                                {t("added_by")} {deposit.added_by_profile.name}
+                                            </span>
+                                       )}
+                                   </p>
+                               </div>
+                           </div>
+                           <div className="flex items-center gap-4">
+                               <div className="font-bold text-red-500">
+                                   {Number(deposit.amount).toFixed(2)}
+                               </div>
+                               <ActionMenu id={deposit.id} type="deposit" onDelete={handleDeleteDeposit} />
+                           </div>
+                       </div>
+                   ))
                )}
            </TabsContent>
        </Tabs>
