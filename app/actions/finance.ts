@@ -60,6 +60,77 @@ export async function addDeposit(formData: FormData) {
   return { success: true }
 }
 
+// BORROW (Negative Deposit)
+export async function addBorrow(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Not authenticated" }
+
+  const amount = parseFloat(formData.get("amount") as string)
+  const date = formData.get("date") as string
+  const memberId = formData.get("memberId") as string
+  const details = formData.get("details") as string
+
+  // Logic to find active month and permissions
+  const { data: member } = await supabase
+      .from("mess_members")
+      .select("mess_id, role, can_manage_finance")
+      .eq("user_id", user.id)
+      .single()
+
+  if (!member) return { error: "No mess found" }
+
+  if (member.role !== 'manager' && !member.can_manage_finance) {
+      return { error: "Unauthorized: You do not have permission to manage finance." }
+  }
+
+  const { data: activeMonth } = await supabase.from("months").select("id").eq("mess_id", member.mess_id).eq("is_active", true).single()
+  if (!activeMonth) return { error: "No active month" }
+
+  // Check Balance
+  const { data: deposits } = await supabase.from("deposits").select("amount").eq("month_id", activeMonth.id)
+  const { data: expenses } = await supabase.from("expenses").select("amount").eq("month_id", activeMonth.id)
+
+  const totalDeposits = deposits?.reduce((sum, d) => sum + Number(d.amount), 0) || 0
+  const totalExpenses = expenses?.reduce((sum, e) => sum + Number(e.amount), 0) || 0
+
+  // Rule: Borrow Amount <= Mess Balance
+  // Note: Mess Balance = Total Deposits (which will decrease after this) - Total Expenses
+  // We check if current balance is sufficient
+  const currentBalance = totalDeposits - totalExpenses
+  if (currentBalance < amount) {
+    return { error: `Insufficient Mess Balance. Current Balance: ৳${currentBalance.toFixed(2)}` }
+  }
+
+  const { error } = await supabase
+    .from("deposits")
+    .insert({
+      month_id: activeMonth.id,
+      user_id: memberId,
+      added_by: user.id,
+      amount: -amount, // Negative amount
+      date,
+      details
+    })
+
+  if (error) return { error: error.message }
+
+  // Notify
+  const { data: borrower } = await supabase.from("profiles").select("name").eq("id", memberId).single()
+  const borrowerName = borrower?.name || "Member"
+
+  await broadcastNotification(
+      member.mess_id,
+      "Money Borrowed",
+      `Borrowing of ৳${amount} recorded for ${borrowerName}.`,
+      undefined,
+      activeMonth.id
+  )
+
+  revalidatePath("/dashboard/finance")
+  return { success: true }
+}
+
 // EXPENSES (Cost)
 export async function addCost(formData: FormData) {
   const supabase = await createClient()

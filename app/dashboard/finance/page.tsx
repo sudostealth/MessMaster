@@ -6,7 +6,7 @@ export default async function FinanceDetailsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return <div className="p-8 text-center text-muted-foreground">Not authenticated.</div>
 
-  const { data: member } = await supabase.from("mess_members").select("mess_id, role").eq("user_id", user?.id).maybeSingle()
+  const { data: member } = await supabase.from("mess_members").select("mess_id, role, can_manage_finance").eq("user_id", user?.id).maybeSingle()
   
   if (!member) return <div className="p-8 text-center text-muted-foreground">Please join or create a mess to view finances.</div>
 
@@ -47,7 +47,7 @@ export default async function FinanceDetailsPage() {
     .eq("month_id", monthId)
     .order("date", { ascending: false })
 
-  const isManager = member.role === 'manager'
+  const isManager = member.role === 'manager' || member.can_manage_finance
 
   return (
     <div className="container py-8">
