@@ -181,7 +181,6 @@ export async function generateAutoSchedule(
   assignedMembers = assignedMembers.slice(0, totalSlots)
 
   // 4. Create Schedules and Shoppers
-  const schedulesToInsert = []
   let currentDate = startDate
 
   for (let i = 0; i < totalTrips; i++) {
@@ -189,16 +188,15 @@ export async function generateAutoSchedule(
     const tripMembers = assignedMembers.slice(i * membersPerTrip, (i + 1) * membersPerTrip)
 
     // Create Schedule Record
-    // We insert schedules sequentially.
-    // Supabase JS insert can handle bulk, but we need the IDs for the shopper mapping.
-    // It's safer to do a loop or careful bulk op. A loop is easier to reason about for relations.
+    // Explicitly format date to string to avoid timezone shifts
+    const dateStr = format(currentDate, "yyyy-MM-dd")
 
     const { data: schedule, error: insertError } = await supabase
         .from("bazaar_schedules")
         .insert({
             month_id: monthId,
             mess_id: month.mess_id,
-            date: format(currentDate, "yyyy-MM-dd"),
+            date: dateStr,
             created_by: user.id
         })
         .select()
@@ -206,7 +204,7 @@ export async function generateAutoSchedule(
 
     if (insertError) {
         console.error("Error inserting schedule inside loop:", insertError)
-        continue // Skip or abort?
+        return { error: `Failed to create schedule for ${dateStr}: ${insertError.message}` }
     }
 
     if (schedule && tripMembers.length > 0) {
@@ -215,7 +213,11 @@ export async function generateAutoSchedule(
             user_id: uid
         }))
 
-        await supabase.from("bazaar_shoppers").insert(shoppersData)
+        const { error: shopperError } = await supabase.from("bazaar_shoppers").insert(shoppersData)
+        if (shopperError) {
+             console.error("Error adding shoppers:", shopperError)
+             return { error: `Failed to add shoppers for ${dateStr}` }
+        }
     }
 
     // Increment date by frequency
@@ -244,26 +246,19 @@ export async function completeSchedule(scheduleId: string) {
 
     if (fetchError || !schedule) return { error: "Schedule not found" }
 
-    // Check if user is manager OR one of the shoppers
-    const isShopper = schedule.shoppers.some((s: any) => s.user_id === user.id)
-
     // Check manager role
-    let isManager = false
-    if (!isShopper) {
-        const { data: membership } = await supabase
-            .from("mess_members")
-            .select("role, can_manage_meals")
-            .eq("mess_id", schedule.mess_id)
-            .eq("user_id", user.id)
-            .single()
+    // Updated requirement: Only Managers can complete.
+    const { data: membership } = await supabase
+        .from("mess_members")
+        .select("role, can_manage_meals")
+        .eq("mess_id", schedule.mess_id)
+        .eq("user_id", user.id)
+        .single()
 
-        if (membership && (membership.role === 'manager' || membership.can_manage_meals)) {
-            isManager = true
-        }
-    }
+    const isManager = membership && (membership.role === 'manager' || membership.can_manage_meals)
 
-    if (!isShopper && !isManager) {
-        return { error: "Permission denied" }
+    if (!isManager) {
+        return { error: "Permission denied (Managers only)" }
     }
 
     const { error } = await supabase

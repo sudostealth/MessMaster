@@ -98,8 +98,7 @@ export function BazaarCard({ schedules, currentUserId, isManager }: BazaarCardPr
                         {displaySchedules.map((schedule) => {
                             const date = parseISO(schedule.date)
                             const isToday = isSameDay(date, today)
-                            const isShopper = schedule.shoppers.some((s: any) => s.user_id === currentUserId)
-                            const canComplete = (isManager || isShopper) && schedule.status === 'pending'
+                            const canComplete = isManager && schedule.status === 'pending'
 
                             return (
                                 <motion.div
