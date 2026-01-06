@@ -137,6 +137,7 @@ export async function getDashboardStats() {
 
   return {
     data: {
+      monthId: activeMonth.id, // Exposed monthId
       monthName: activeMonth.name,
       totalMembers: members?.length || 0,
       totalMeals,
