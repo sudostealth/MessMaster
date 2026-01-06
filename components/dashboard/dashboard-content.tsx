@@ -12,15 +12,19 @@ import { getDetailedMonthReport } from "@/app/actions/reports"
 import { generateMonthReportPDF } from "@/lib/pdf-generator"
 import { toast } from "sonner"
 import { useState } from "react"
+import { BazaarSchedulerDialog } from "@/components/dashboard/bazaar/bazaar-scheduler-dialog"
+import { BazaarCard } from "@/components/dashboard/bazaar/bazaar-card"
 
 interface DashboardContentProps {
     user: any;
     membership: any;
     stats: any;
     message: string;
+    bazaarSchedules?: any[];
+    messMembers?: any[];
 }
 
-export function DashboardContent({ user, membership, stats, message }: DashboardContentProps) {
+export function DashboardContent({ user, membership, stats, message, bazaarSchedules = [], messMembers = [] }: DashboardContentProps) {
     const { t } = useLanguage()
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
 
@@ -63,6 +67,7 @@ export function DashboardContent({ user, membership, stats, message }: Dashboard
         }
 
         const isManager = membership.role === 'manager' || membership.can_manage_finance
+        const canManageMeals = membership.role === 'manager' || membership.can_manage_meals
 
         return (
           <div className="container py-8 space-y-8">
@@ -83,25 +88,46 @@ export function DashboardContent({ user, membership, stats, message }: Dashboard
                         {greeting}, <span className="text-foreground font-semibold">{user.user_metadata?.name || "Member"}</span>
                     </p>
 
-                    {stats && isManager && (
-                        <Button
-                          onClick={handleDownloadPDF}
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          disabled={isGeneratingPdf}
-                        >
-                           {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin"/> : <Download className="w-4 h-4"/>}
-                           {isGeneratingPdf ? "Generating..." : "Download Report"}
-                        </Button>
-                    )}
+                    <div className="flex gap-2">
+                        {stats && canManageMeals && stats.monthId && (
+                             <BazaarSchedulerDialog monthId={stats.monthId} members={messMembers} />
+                        )}
+
+                        {stats && isManager && (
+                            <Button
+                              onClick={handleDownloadPDF}
+                              variant="outline"
+                              size="sm"
+                              className="gap-2"
+                              disabled={isGeneratingPdf}
+                            >
+                               {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin"/> : <Download className="w-4 h-4"/>}
+                               {isGeneratingPdf ? "Generating..." : "Download Report"}
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
                {/* Add Month Selector or Actions here later */}
     
             
             {stats ? (
-                <DashboardStats data={stats} />
+                <>
+                    {/* Inject Bazaar Card here. Maybe as a full width or part of a grid above stats? */}
+                    {/* Let's put it above the stats if there are schedules, or just always there if user wants to see upcoming */}
+                    <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3 mb-6">
+                       <div className="lg:col-span-1">
+                           <BazaarCard
+                               schedules={bazaarSchedules}
+                               currentUserId={user.id}
+                               isManager={canManageMeals}
+                           />
+                       </div>
+                       {/* Maybe more widgets later */}
+                    </div>
+
+                    <DashboardStats data={stats} />
+                </>
             ) : (
                 <div className="p-8 border border-dashed rounded-lg text-center">
                     <h3 className="text-lg font-medium">{t("no_active_month")}</h3>
