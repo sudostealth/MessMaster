@@ -1,13 +1,13 @@
 "use client"
 
-import { completeSchedule } from "@/app/actions/bazaar"
+import { completeSchedule, deleteSchedule } from "@/app/actions/bazaar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
-import { Check, Calendar as CalendarIcon, ShoppingCart, User } from "lucide-react"
+import { Check, Calendar as CalendarIcon, ShoppingCart, User, Trash2 } from "lucide-react"
 import { format, isSameDay, parseISO } from "date-fns"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -21,6 +21,7 @@ interface BazaarCardProps {
 
 export function BazaarCard({ schedules, currentUserId, isManager }: BazaarCardProps) {
     const [loadingId, setLoadingId] = useState<string | null>(null)
+    const [deletingId, setDeletingId] = useState<string | null>(null)
 
     const handleComplete = async (id: string) => {
         setLoadingId(id)
@@ -35,6 +36,22 @@ export function BazaarCard({ schedules, currentUserId, isManager }: BazaarCardPr
             toast.error("Failed to update")
         } finally {
             setLoadingId(null)
+        }
+    }
+
+    const handleDelete = async (id: string) => {
+        setDeletingId(id)
+        try {
+            const res = await deleteSchedule(id)
+            if (res.error) {
+                toast.error(res.error)
+            } else {
+                toast.success("Schedule deleted")
+            }
+        } catch (error) {
+            toast.error("Failed to delete")
+        } finally {
+            setDeletingId(null)
         }
     }
 
@@ -76,7 +93,7 @@ export function BazaarCard({ schedules, currentUserId, isManager }: BazaarCardPr
                 </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 min-h-[300px]">
-                <ScrollArea className="h-[300px] pr-4">
+                <ScrollArea className="h-[400px] pr-4 pb-4">
                     <div className="space-y-4">
                         {displaySchedules.map((schedule) => {
                             const date = parseISO(schedule.date)
@@ -161,8 +178,37 @@ export function BazaarCard({ schedules, currentUserId, isManager }: BazaarCardPr
                                         )}
                                     </div>
 
-                                    {canComplete && (
-                                        <div className="mt-4 flex justify-end relative z-10">
+                                    <div className="mt-4 flex justify-between items-center relative z-10">
+                                        <div>
+                                            {isManager && (
+                                                <Dialog>
+                                                    <DialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent>
+                                                        <DialogHeader>
+                                                            <DialogTitle>Delete Schedule?</DialogTitle>
+                                                            <DialogDescription>
+                                                                This action cannot be undone. This will remove the shopping schedule for {format(date, "MMM d")}.
+                                                            </DialogDescription>
+                                                        </DialogHeader>
+                                                        <div className="flex justify-end gap-2 mt-4">
+                                                            <Button
+                                                                variant="destructive"
+                                                                onClick={() => handleDelete(schedule.id)}
+                                                                disabled={deletingId === schedule.id}
+                                                            >
+                                                                {deletingId === schedule.id ? "Deleting..." : "Delete"}
+                                                            </Button>
+                                                        </div>
+                                                    </DialogContent>
+                                                </Dialog>
+                                            )}
+                                        </div>
+
+                                        {canComplete && (
                                             <Button
                                                 size="sm"
                                                 onClick={() => handleComplete(schedule.id)}
@@ -178,8 +224,8 @@ export function BazaarCard({ schedules, currentUserId, isManager }: BazaarCardPr
                                                     </>
                                                 )}
                                             </Button>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </motion.div>
                             )
                         })}
