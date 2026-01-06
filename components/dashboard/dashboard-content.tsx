@@ -113,17 +113,13 @@ export function DashboardContent({ user, membership, stats, message, bazaarSched
             
             {stats ? (
                 <>
-                    {/* Inject Bazaar Card here. Maybe as a full width or part of a grid above stats? */}
-                    {/* Let's put it above the stats if there are schedules, or just always there if user wants to see upcoming */}
-                    <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3 mb-6">
-                       <div className="lg:col-span-1">
-                           <BazaarCard
-                               schedules={bazaarSchedules}
-                               currentUserId={user.id}
-                               isManager={canManageMeals}
-                           />
-                       </div>
-                       {/* Maybe more widgets later */}
+                    {/* Bazaar Card Section - Full Width Responsive Grid */}
+                    <div className="mb-6 w-full">
+                       <BazaarCard
+                           schedules={bazaarSchedules}
+                           currentUserId={user.id}
+                           isManager={canManageMeals}
+                       />
                     </div>
 
                     <DashboardStats data={stats} />
