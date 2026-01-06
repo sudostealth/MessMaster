@@ -15,7 +15,7 @@ import { CalendarIcon, Loader2, Plus, ShoppingCart } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { createManualSchedule, generateAutoSchedule } from "@/app/actions/bazaar"
+import { createManualSchedule, generateAutoSchedule, deleteAllSchedules } from "@/app/actions/bazaar"
 
 interface BazaarSchedulerDialogProps {
     monthId: string
@@ -37,6 +37,26 @@ export function BazaarSchedulerDialog({ monthId, members }: BazaarSchedulerDialo
     const [frequency, setFrequency] = useState("2")
     const [totalTrips, setTotalTrips] = useState("4")
     const [membersPerTrip, setMembersPerTrip] = useState("1")
+    const [isDeletingAll, setIsDeletingAll] = useState(false)
+
+    const handleDeleteAll = async () => {
+        if (!confirm("Are you sure you want to delete ALL schedules for this month?")) return
+
+        setIsDeletingAll(true)
+        try {
+            const res = await deleteAllSchedules(monthId)
+            if (res.error) {
+                toast.error(res.error)
+            } else {
+                toast.success("All schedules deleted")
+                setOpen(false)
+            }
+        } catch (error) {
+            toast.error("Failed to delete schedules")
+        } finally {
+            setIsDeletingAll(false)
+        }
+    }
 
     const handleManualSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -252,12 +272,25 @@ export function BazaarSchedulerDialog({ monthId, members }: BazaarSchedulerDialo
                             Warning: This will delete all future schedules for this month starting from the selected Start Date.
                         </div>
 
-                        <Button onClick={handleAutoSubmit} disabled={isLoading} className="w-full">
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Generate Schedules
-                        </Button>
+                        <div className="flex gap-2">
+                             <Button onClick={handleAutoSubmit} disabled={isLoading} className="flex-1">
+                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Generate Schedules
+                            </Button>
+                        </div>
                     </TabsContent>
                 </Tabs>
+
+                <div className="mt-4 pt-4 border-t flex justify-end">
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleDeleteAll}
+                        disabled={isDeletingAll}
+                    >
+                        {isDeletingAll ? "Clearing..." : "Clear All Schedules"}
+                    </Button>
+                </div>
             </DialogContent>
         </Dialog>
     )

@@ -276,3 +276,85 @@ export async function completeSchedule(scheduleId: string) {
     revalidatePath("/dashboard")
     return { success: true }
 }
+
+/**
+ * Delete a specific bazaar schedule
+ */
+export async function deleteSchedule(scheduleId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { error: "Unauthorized" }
+
+    // Fetch schedule to check permissions
+    const { data: schedule, error: fetchError } = await supabase
+        .from("bazaar_schedules")
+        .select("mess_id")
+        .eq("id", scheduleId)
+        .single()
+
+    if (fetchError || !schedule) return { error: "Schedule not found" }
+
+    // Check manager role
+    const { data: membership } = await supabase
+        .from("mess_members")
+        .select("role, can_manage_meals")
+        .eq("mess_id", schedule.mess_id)
+        .eq("user_id", user.id)
+        .single()
+
+    if (!membership || (membership.role !== 'manager' && !membership.can_manage_meals)) {
+        return { error: "Permission denied" }
+    }
+
+    const { error } = await supabase
+        .from("bazaar_schedules")
+        .delete()
+        .eq("id", scheduleId)
+
+    if (error) return { error: "Failed to delete schedule" }
+
+    revalidatePath("/dashboard")
+    return { success: true }
+}
+
+/**
+ * Delete all schedules for a month
+ */
+export async function deleteAllSchedules(monthId: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { error: "Unauthorized" }
+
+    // Get mess_id from month
+    const { data: month } = await supabase
+        .from("months")
+        .select("mess_id")
+        .eq("id", monthId)
+        .single()
+
+    if (!month) return { error: "Month not found" }
+
+    // Check manager role
+    const { data: membership } = await supabase
+        .from("mess_members")
+        .select("role, can_manage_meals")
+        .eq("mess_id", month.mess_id)
+        .eq("user_id", user.id)
+        .single()
+
+    if (!membership || (membership.role !== 'manager' && !membership.can_manage_meals)) {
+        return { error: "Permission denied" }
+    }
+
+    const { error } = await supabase
+        .from("bazaar_schedules")
+        .delete()
+        .eq("month_id", monthId)
+
+    if (error) return { error: "Failed to delete schedules" }
+
+    revalidatePath("/dashboard")
+    return { success: true }
+}
