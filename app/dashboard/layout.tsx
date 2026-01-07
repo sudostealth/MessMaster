@@ -15,6 +15,18 @@ export default async function DashboardLayout({
     redirect("/login")
   }
 
+  // Sync profile email if different (Self-healing)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("email")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  if (profile && profile.email !== user.email && user.email) {
+    // Update profile email to match auth email
+    await supabase.from("profiles").update({ email: user.email }).eq("id", user.id)
+  }
+
   // Fetch role and permissions
   const { data: member } = await supabase
     .from("mess_members")
